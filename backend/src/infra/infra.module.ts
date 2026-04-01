@@ -1,0 +1,8 @@
+import { Module } from '@nestjs/common';
+import { PrismaModule } from './prisma/prisma.module';
+import { CloudinaryModule } from './claudinary/claudinary.module';
+
+@Module({
+  imports: [PrismaModule, CloudinaryModule],
+})
+export class InfraModule {}

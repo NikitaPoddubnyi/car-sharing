@@ -16,7 +16,7 @@ backend/dist/
 *.db-journal
 
 node_modules/.prisma
-
+node_modules/generated/prisma
 .vscode/
 .idea/
 .DS_Store
