@@ -19,8 +19,13 @@ model User {
   email     String      @unique
   password  String
   role      UserRole    @default(USER)
+
+  phone     String?        @unique 
+  birthDate DateTime?      @map("birth_date")
   
   avatar    UserAvatar? @relation("user_avatar")
+  license   DriverLicense?
+  bookings  Booking[]    @relation("booking_user")
 
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
@@ -41,7 +46,218 @@ model UserAvatar {
   @@map("user_avatars")
 }
 
+model DriverLicense {
+  id             Int      @id @default(autoincrement())
+
+  licenseNumber  String   @unique
+  issueDate      DateTime 
+  expiryDate     DateTime 
+  country        String   @default("Ukraine")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         Int      @unique 
+
+  status        DriverLicenseStatus     @default(PENDING)
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("driver_licenses")
+}
+
+model Car {
+  id            Int      @id @default(autoincrement())
+  brand         String   
+  model         String   
+  year          Int     
+  
+  bodyType      BodyType @default(SEDAN)
+  seats         Int      // 2
+  doors         Int      // 2
+  luggage       Int      // Объем багажника (150)
+  transmission  Transmission  @default(AUTOMATIC) 
+  driveTrain    DriveTrain    @default(FWD)
+  mileage       Int      // Пробег
+  fuelType      FuelType      @default(PETROL)
+  engineSize    Int      
+
+  pricePerDay   Decimal  @db.Decimal(10, 2) 
+  pricePerHour  Decimal  @db.Decimal(10, 2)
+
+  location      Location @relation("cars_location", fields: [locationId], references: [id], onDelete: Restrict)
+  locationId    Int      @map("location_id")
+
+  isAvailable   Boolean  @default(true)      
+  
+  description   String?  @db.Text           
+
+  images        CarImage[]                  
+  bookings      Booking[]  @relation("booking_car")                 
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("cars")
+}
+
+model Location {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique 
+  city      String    
+  lat       Float?    
+  lng       Float?    
+
+  cars      Car[]     @relation("cars_location")    
+  bikes     Bike[]     @relation("bikes_location")    
+
+  
+  pickUpBookings  Booking[] @relation("PickUpLocation")
+  dropOffBookings Booking[] @relation("DropOffLocation")
+
+  @@map("locations")
+}
+
+model CarImage {
+  id        Int    @id @default(autoincrement())
+  url       String
+  car       Car    @relation(fields: [carId], references: [id], onDelete: Cascade)
+  carId     Int    @map("car_id")
+  isPrimary Boolean @default(false)
+
+  @@map("car_images")
+}
+
+model Bike {
+  id            Int      @id @default(autoincrement())
+  brand         String   
+  model         String   
+  year          Int     
+  
+  groundClearance Int 
+  engineDisplacement  Int
+  emmisionType   String
+  fuelType       FuelType      @default(PETROL)
+  mileage       Int      // Пробег
+  abs           String
+  gearBox        GearBox @default(SPEED_5)
+  tyreType       TyreType @default(FLAT)
+  engineSize    Int      
+
+  pricePerDay   Decimal  @db.Decimal(10, 2) 
+  pricePerHour  Decimal  @db.Decimal(10, 2)
+
+  location      Location @relation("bikes_location", fields: [locationId], references: [id], onDelete: Restrict)
+  locationId    Int      @map("location_id")
+
+  isAvailable   Boolean  @default(true)      
+  
+  description   String?  @db.Text           
+
+  images        BikeImage[]                  
+  bookings      Booking[]  @relation("booking_bike")                  
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("bikes")
+}
+
+model BikeImage {
+  id        Int    @id @default(autoincrement())
+  url       String
+  bike       Bike    @relation(fields: [bikeId], references: [id], onDelete: Cascade)
+  bikeId     Int    @map("bike_id")
+  isPrimary Boolean @default(false)
+
+  @@map("bike_images")
+}
+
+model Booking {
+  id              Int           @id @default(autoincrement())
+  bookingNo       String        @unique 
+  
+  // Связи
+  user            User          @relation("booking_user",fields: [userId], references: [id])
+  userId          Int           @map("user_id")
+  
+  car             Car?           @relation("booking_car", fields: [carId], references: [id])
+  carId           Int?           @map("car_id")
+  
+  bike            Bike?          @relation("booking_bike", fields: [bikeId], references: [id])
+  bikeId          Int?           @map("bike_id")
+  // География
+  pickUpLocationId Int @map("pick_up_location_id")
+  pickUpLocation   Location @relation("PickUpLocation", fields: [pickUpLocationId], references: [id], onDelete: Restrict) 
+  
+  dropOffLocationId Int? @map("drop_off_location_id")
+  dropOffLocation  Location? @relation("DropOffLocation", fields: [dropOffLocationId], references: [id], onDelete: SetNull) 
+
+  startDate       DateTime      @map("start_date") 
+  endDate         DateTime      @map("end_date")   
+
+  // Финансы
+  totalPrice      Decimal       @db.Decimal(10, 2) @map("total_price") 
+
+  status          BookingStatus @default(BOOKING)
+
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@map("bookings")
+}
+
+enum GearBox {
+  SPEED_5
+  SPEED_6
+  SPEED_7
+}
+
+enum TyreType {
+  FLAT
+  RIM
+  TUBELESS
+}
+
+enum BookingStatus {
+  BOOKING   
+  COMPLETED 
+  CANCELLED 
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  HYBRID
+}
+
+enum BodyType {
+  SEDAN
+  SUV
+  COUPE
+  HATCHBACK
+  CONVERTIBLE
+  CROSSOVER
+  VAN
+  PICKUP
+}
+
+enum Transmission {
+  AUTOMATIC
+}
+
+enum DriveTrain {
+  FWD
+  RWD
+  AWD
+}
+
 enum UserRole {
   USER
   ADMIN
+}
+
+enum DriverLicenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

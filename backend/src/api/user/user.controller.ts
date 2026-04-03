@@ -3,16 +3,19 @@ import { Authorization } from 'src/common/decorators';
 import { Authorized } from 'src/common/decorators';
 import { UserRole, type User } from '@prisma/client';
 import {
+  Body,
   Controller,
   FileTypeValidator,
   Get,
   MaxFileSizeValidator,
   ParseFilePipe,
+  Patch,
   Post,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateLicenseDto, CompleteProfileDto } from './dto';
 
 @Controller()
 export class UserController {
@@ -20,8 +23,8 @@ export class UserController {
 
   @Get('profile')
   @Authorization()
-  getProfile(@Authorized() user: User) {
-    return user;
+  async getProfile(@Authorized('id') userId: string) {
+    return await this.userService.findById(Number(userId));
   }
 
   @Get('users')
@@ -46,5 +49,23 @@ export class UserController {
     file: Express.Multer.File,
   ) {
     return this.userService.updateAvatar(Number(userId), file);
+  }
+
+  @Patch('profile/license')
+  @Authorization()
+  async updateLicense(
+    @Authorized('id') userId: string,
+    @Body() dto: UpdateLicenseDto,
+  ) {
+    return this.userService.updateLicense(Number(userId), dto);
+  }
+
+  @Patch('profile/complete')
+  @Authorization()
+  async updateProfile(
+    @Authorized('id') userId: string,
+    @Body() dto: CompleteProfileDto,
+  ) {
+    return this.userService.updateProfile(Number(userId), dto);
   }
 }

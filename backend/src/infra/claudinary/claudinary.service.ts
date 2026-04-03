@@ -40,4 +40,20 @@ export class CloudinaryService {
       streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
   }
+
+  async deleteFile(publicId: string) {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.destroy(publicId, (error, result) => {
+        if (error) return reject(error);
+
+        if (result.result !== 'ok') {
+          return reject(
+            new BadRequestException(`Cloudinary: ${result.result}`),
+          );
+        }
+
+        resolve(result);
+      });
+    });
+  }
 }

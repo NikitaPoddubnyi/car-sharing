@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { InfraModule } from './infra/infra.module';
 import { ConfigModule } from '@nestjs/config';
+
 import { ApiModule } from './api/api.module';
 
 @Module({
