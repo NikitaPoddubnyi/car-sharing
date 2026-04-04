@@ -14,8 +14,9 @@ datasource db {
 }
 
 model User {
-  id        Int         @id @default(autoincrement())
-  name      String
+  id        String      @id @default(cuid())
+  firstName  String   @map("first_name") 
+  lastName   String   @map("last_name")
   email     String      @unique
   password  String
   role      UserRole    @default(USER)
@@ -34,11 +35,11 @@ model User {
 }
 
 model UserAvatar {
-  id        Int      @id @default(autoincrement())
+  id        String      @id @default(cuid())
   url       String
   
   user      User     @relation("user_avatar", fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int      @unique @map("user_id")
+  userId    String      @unique @map("user_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -47,15 +48,18 @@ model UserAvatar {
 }
 
 model DriverLicense {
-  id             Int      @id @default(autoincrement())
+  id        String      @id @default(cuid())
 
   licenseNumber  String   @unique
   issueDate      DateTime 
   expiryDate     DateTime 
   country        String   @default("Ukraine")
 
+  frontImage     String?  @map("front_image")
+  backImage      String?  @map("back_image")
+
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         Int      @unique 
+  userId         String      @unique 
 
   status        DriverLicenseStatus     @default(PENDING)
 
@@ -66,7 +70,7 @@ model DriverLicense {
 }
 
 model Car {
-  id            Int      @id @default(autoincrement())
+  id        String      @id @default(cuid())
   brand         String   
   model         String   
   year          Int     
@@ -85,7 +89,7 @@ model Car {
   pricePerHour  Decimal  @db.Decimal(10, 2)
 
   location      Location @relation("cars_location", fields: [locationId], references: [id], onDelete: Restrict)
-  locationId    Int      @map("location_id")
+  locationId    String      @map("location_id")
 
   isAvailable   Boolean  @default(true)      
   
@@ -101,7 +105,7 @@ model Car {
 }
 
 model Location {
-  id        Int       @id @default(autoincrement())
+  id        String      @id @default(cuid())
   name      String    @unique 
   city      String    
   lat       Float?    
@@ -118,17 +122,17 @@ model Location {
 }
 
 model CarImage {
-  id        Int    @id @default(autoincrement())
+  id        String      @id @default(cuid())
   url       String
   car       Car    @relation(fields: [carId], references: [id], onDelete: Cascade)
-  carId     Int    @map("car_id")
+  carId     String    @map("car_id")
   isPrimary Boolean @default(false)
 
   @@map("car_images")
 }
 
 model Bike {
-  id            Int      @id @default(autoincrement())
+  id        String      @id @default(cuid())
   brand         String   
   model         String   
   year          Int     
@@ -147,7 +151,7 @@ model Bike {
   pricePerHour  Decimal  @db.Decimal(10, 2)
 
   location      Location @relation("bikes_location", fields: [locationId], references: [id], onDelete: Restrict)
-  locationId    Int      @map("location_id")
+  locationId    String      @map("location_id")
 
   isAvailable   Boolean  @default(true)      
   
@@ -163,33 +167,34 @@ model Bike {
 }
 
 model BikeImage {
-  id        Int    @id @default(autoincrement())
+  id        String      @id @default(cuid())
   url       String
   bike       Bike    @relation(fields: [bikeId], references: [id], onDelete: Cascade)
-  bikeId     Int    @map("bike_id")
+  bikeId     String    @map("bike_id")
   isPrimary Boolean @default(false)
 
   @@map("bike_images")
 }
 
 model Booking {
-  id              Int           @id @default(autoincrement())
+    id        String      @id @default(cuid())
   bookingNo       String        @unique 
   
   // Связи
   user            User          @relation("booking_user",fields: [userId], references: [id])
-  userId          Int           @map("user_id")
+  userId          String           @map("user_id")
   
   car             Car?           @relation("booking_car", fields: [carId], references: [id])
-  carId           Int?           @map("car_id")
+  carId           String?           @map("car_id")
   
   bike            Bike?          @relation("booking_bike", fields: [bikeId], references: [id])
-  bikeId          Int?           @map("bike_id")
+  bikeId          String?           @map("bike_id")
+
   // География
-  pickUpLocationId Int @map("pick_up_location_id")
+  pickUpLocationId String @map("pick_up_location_id")
   pickUpLocation   Location @relation("PickUpLocation", fields: [pickUpLocationId], references: [id], onDelete: Restrict) 
   
-  dropOffLocationId Int? @map("drop_off_location_id")
+  dropOffLocationId String? @map("drop_off_location_id")
   dropOffLocation  Location? @relation("DropOffLocation", fields: [dropOffLocationId], references: [id], onDelete: SetNull) 
 
   startDate       DateTime      @map("start_date") 

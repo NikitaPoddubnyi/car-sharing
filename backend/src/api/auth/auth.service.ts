@@ -28,7 +28,7 @@ export class AuthService {
   ) {}
 
   async register(res: Response, dto: RegisterRequest) {
-    const { name, email, password } = dto;
+    const { firstName, lastName, email, password } = dto;
     const existUser = await this.prismaService.user.findUnique({
       where: { email },
     });
@@ -40,7 +40,8 @@ export class AuthService {
 
     const user = await this.prismaService.user.create({
       data: {
-        name,
+		firstName,
+		lastName,
         email,
         password: hashedPassword,
       },
@@ -102,7 +103,7 @@ export class AuthService {
     this.setCookie(res, 'refreshToken', new Date(Date.now() - 1));
   }
 
-  async validate(id: number) {
+  async validate(id: string) {
     const user = await this.prismaService.user.findUnique({
       where: {
         id,
@@ -116,7 +117,7 @@ export class AuthService {
     return user;
   }
 
-  private generateTokens(id: number) {
+  private generateTokens(id: string) {
     const payload: JwtPayload = { id };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -140,7 +141,7 @@ export class AuthService {
     });
   }
 
-  private auth(res: Response, id: number) {
+  private auth(res: Response, id: string) {
     const { accessToken, refreshToken } = this.generateTokens(id);
     const expiresInMs = this.parseExpirationTime(
       this.options.refreshTokenExp as any,

@@ -19,7 +19,7 @@ export class InquiryController {
   }
 
   @Get(':id')
-  findById(@Body() id: string): Promise<Inquiry> {
+  findById(@Param() id: string): Promise<Inquiry> {
     return this.inquiryService.findById(id);
   }
 
@@ -27,7 +27,7 @@ export class InquiryController {
   updateStatus(
   @Param('id') id: string,          
   @Body('status') status: InquiryStatus, 
-  ) {
+  ): Promise<Inquiry> {
   return this.inquiryService.updateStatus(id, status);
 }
 }

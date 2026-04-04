@@ -5,5 +5,4 @@ export function getMongodbConfig(configService: ConfigService): MongooseModuleOp
 	return {
 		uri: configService.getOrThrow<string>('MONGO_URI'),
 	};
-	
 }

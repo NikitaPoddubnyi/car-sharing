@@ -5,26 +5,33 @@ import { UserRole, type User } from '@prisma/client';
 import {
   Body,
   Controller,
+  Delete,
   FileTypeValidator,
   Get,
+  HttpCode,
+  HttpStatus,
   MaxFileSizeValidator,
   ParseFilePipe,
   Patch,
   Post,
+  Res,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { UpdateLicenseDto, CompleteProfileDto } from './dto';
+import type { Response } from 'express';
 
 @Controller()
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('profile')
+  @HttpCode(HttpStatus.OK)
   @Authorization()
   async getProfile(@Authorized('id') userId: string) {
-    return await this.userService.findById(Number(userId));
+    return await this.userService.findById(userId);
   }
 
   @Get('users')
@@ -48,17 +55,27 @@ export class UserController {
     )
     file: Express.Multer.File,
   ) {
-    return this.userService.updateAvatar(Number(userId), file);
+    return this.userService.updateAvatar(userId, file);
   }
 
-  @Patch('profile/license')
-  @Authorization()
-  async updateLicense(
-    @Authorized('id') userId: string,
-    @Body() dto: UpdateLicenseDto,
-  ) {
-    return this.userService.updateLicense(Number(userId), dto);
-  }
+@Patch('profile/license') 
+@Authorization()
+@UseInterceptors(
+  FileFieldsInterceptor([
+    { name: 'front', maxCount: 1 },
+    { name: 'back', maxCount: 1 },
+  ]),
+)
+async completeLicense(
+  @Authorized('id') userId: string,
+  @Body() dto: UpdateLicenseDto, 
+  @UploadedFiles() files: { front?: Express.Multer.File[]; back?: Express.Multer.File[] },
+) {
+
+  await this.userService.updateLicense(userId, dto);
+
+  return this.userService.updateLicenseImages(userId, files);
+}
 
   @Patch('profile/complete')
   @Authorization()
@@ -66,6 +83,12 @@ export class UserController {
     @Authorized('id') userId: string,
     @Body() dto: CompleteProfileDto,
   ) {
-    return this.userService.updateProfile(Number(userId), dto);
+    return this.userService.updateProfile(userId, dto);
+  }
+
+  @Delete('profile')
+  @Authorization()
+  async deleteProfile(@Res({ passthrough: true }) res: Response, @Authorized('id') userId: string) {
+    return this.userService.deleteProfile(res, userId);
   }
 }

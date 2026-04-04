@@ -16,30 +16,31 @@ export class CloudinaryService {
     });
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    folder: 'avatars' | 'products' = 'products',
-  ): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: folder,
-          transformation:
-            folder === 'avatars'
-              ? [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }]
-              : [{ width: 1000, height: 1000, crop: 'limit' }],
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          if (!result)
-            return reject(new Error('Cloudinary result is undefined'));
-          resolve(result);
-        },
-      );
+async uploadFile(
+  file: Express.Multer.File,
+  folder: 'avatars' | 'vehicles' | 'licenses' = 'vehicles',
+): Promise<UploadApiResponse> {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        transformation:
+          folder === 'avatars'
+            ? [{ width: 400, height: 400, crop: 'fill', gravity: 'face' }]
+            : folder === 'licenses'
+            ? [{ width: 1200, height: 800, crop: 'limit' }] 
+            : [{ width: 820, height: 490, crop: 'limit' }],
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result) return reject(new Error('Cloudinary result is undefined'));
+        resolve(result);
+      },
+    );
 
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
-    });
-  }
+    streamifier.createReadStream(file.buffer).pipe(uploadStream);
+  });
+}
 
   async deleteFile(publicId: string) {
     return new Promise((resolve, reject) => {

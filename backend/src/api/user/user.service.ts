@@ -3,15 +3,18 @@ import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { UpdateLicenseDto, CompleteProfileDto } from './dto';
 import { CalculateAge } from 'src/common/helpers/calculate-age.helper';
+import { AuthService } from '../auth/auth.service';
+import type { Response } from 'express';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly cloudinary: CloudinaryService,
+	private readonly authService: AuthService,
   ) {}
 
-  async findById(id: number) {
+  async findById(id: string) {
     return this.prismaService.user.findUnique({
       where: { id },
       include: {
@@ -29,7 +32,7 @@ export class UserService {
     });
   }
 
-  async updateAvatar(userId: number, file: Express.Multer.File) {
+  async updateAvatar(userId: string, file: Express.Multer.File) {
     try {
       if (!file) {
         throw new BadRequestException('No file uploaded');
@@ -70,7 +73,7 @@ export class UserService {
     }
   }
 
-  async updateLicense(userId: number, dto: UpdateLicenseDto) {
+  async updateLicense(userId: string, dto: UpdateLicenseDto) {
     const { licenseNumber, issueDate, expiryDate, country } = dto;
 
     const user = await this.prismaService.user.findUnique({
@@ -109,7 +112,45 @@ export class UserService {
     });
   }
 
-  async updateProfile(userId: number, dto: CompleteProfileDto) {
+  async updateLicenseImages(
+  userId: string,
+  files: { front?: Express.Multer.File[]; back?: Express.Multer.File[] },
+) {
+  const license = await this.prismaService.driverLicense.findUnique({
+    where: { userId },
+  });
+
+  if (!license) {
+    throw new BadRequestException('At first you need to upload license');
+  }
+
+  const updateData: any = { status: 'PENDING' };
+
+  if (files.front?.[0]) {
+    if (license.frontImage) {
+      const publicId = license.frontImage.split('/').slice(-2).join('/').split('.')[0];
+      await this.cloudinary.deleteFile(publicId).catch(() => {});
+    }
+    const uploaded = await this.cloudinary.uploadFile(files.front[0], 'licenses');
+    updateData.frontImage = uploaded.secure_url;
+  }
+
+  if (files.back?.[0]) {
+    if (license.backImage) {
+      const publicId = license.backImage.split('/').slice(-2).join('/').split('.')[0];
+      await this.cloudinary.deleteFile(publicId).catch(() => {});
+    }
+    const uploaded = await this.cloudinary.uploadFile(files.back[0], 'licenses');
+    updateData.backImage = uploaded.secure_url;
+  }
+
+  return this.prismaService.driverLicense.update({
+    where: { userId },
+    data: updateData,
+  });
+}
+
+  async updateProfile(userId: string, dto: CompleteProfileDto) {
     const { phone, birthDate } = dto;
 
     const age = CalculateAge(birthDate);
@@ -126,4 +167,27 @@ export class UserService {
       },
     });
   }
+
+async deleteProfile(res: Response, userId: string) {
+  const user = await this.prismaService.user.findUnique({
+    where: { id: userId },
+    include: { avatar: true },
+  });
+
+  if (user?.avatar) {
+    try {
+      const publicId = user.avatar.url.split('/').slice(-2).join('/').split('.')[0];
+      await this.cloudinary.deleteFile(publicId);
+    } catch (error) {
+    }
+  }
+
+  const result = this.prismaService.user.delete({
+    where: { id: userId },
+  });
+
+  await this.authService.logout(res);
+
+  return result;
+}
 }

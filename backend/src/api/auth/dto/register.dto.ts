@@ -12,7 +12,7 @@ import {
 export class RegisterRequest {
   @ApiProperty({
     description: 'Имя пользователя',
-    example: 'Иван Иванович',
+    example: 'Иван',
     type: String,
     required: true,
     minLength: 3,
@@ -22,7 +22,21 @@ export class RegisterRequest {
   @IsNotEmpty({ message: 'Имя не должно быть пустым' })
   @MinLength(3, { message: 'Имя не должно быть короче 3 символов' })
   @MaxLength(50, { message: 'Имя не должно превышать 50 символов' })
-  name: string;
+  firstName: string;
+
+  @ApiProperty({
+	description: 'Фамилия пользователя',
+	example: 'Иванов',
+	type: String,
+	required: true,
+	minLength: 3,
+	maxLength: 50,
+  })
+  @IsString({ message: 'Фамилия должна быть строкой' })
+  @IsNotEmpty({ message: 'Фамилия не должна быть пустой' })
+  @MinLength(3, { message: 'Фамилия не должна быть короче 3 символов' })
+  @MaxLength(50, { message: 'Фамилия не должна превышать 50 символов' })
+  lastName: string;
 
   @ApiProperty({
     description: 'Email пользователя',
