@@ -1,27 +1,73 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import { UpdateLicenseDto, CompleteProfileDto } from './dto';
 import { CalculateAge } from 'src/common/helpers/calculate-age.helper';
 import { AuthService } from '../auth/auth.service';
 import type { Response } from 'express';
+import { DriverLicense, User, UserAvatar } from '@prisma/client';
+import { getPublicId } from 'src/common/helpers';
 
 @Injectable()
 export class UserService {
+
+	private async purgeUserData(userId: string): Promise<void> {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      include: { 
+        avatar: true, 
+        license: true 
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const publicIdsToDelete: string[] = [];
+
+    if (user.avatar?.url) {
+      publicIdsToDelete.push(getPublicId(user.avatar.url));
+    }
+
+    if (user.license) {
+      if (user.license.frontImage) publicIdsToDelete.push(getPublicId(user.license.frontImage));
+      if (user.license.backImage) publicIdsToDelete.push(getPublicId(user.license.backImage));
+    }
+
+    if (publicIdsToDelete.length > 0) {
+      await Promise.all(
+        publicIdsToDelete.map((id) => 
+          this.cloudinary.deleteFile(id).catch(() => {})
+        ),
+      );
+    }
+
+    await this.prismaService.user.delete({
+      where: { id: userId },
+    });
+  }
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly cloudinary: CloudinaryService,
 	private readonly authService: AuthService,
   ) {}
 
-  async findById(id: string) {
-    return this.prismaService.user.findUnique({
+  async findById(id: string): Promise<User> {
+    const user = await this.prismaService.user.findUnique({
       where: { id },
       include: {
         license: true,
         avatar: true,
       },
     });
+
+	if (!user) {
+	  throw new NotFoundException('User not found');
+	}
+
+	return user;
   }
 
   async findAll() {
@@ -32,7 +78,7 @@ export class UserService {
     });
   }
 
-  async updateAvatar(userId: string, file: Express.Multer.File) {
+  async updateAvatar(userId: string, file: Express.Multer.File): Promise<Pick<UserAvatar, 'url'>> {
     try {
       if (!file) {
         throw new BadRequestException('No file uploaded');
@@ -73,7 +119,7 @@ export class UserService {
     }
   }
 
-  async updateLicense(userId: string, dto: UpdateLicenseDto) {
+  async updateLicense(userId: string, dto: UpdateLicenseDto): Promise<DriverLicense> {
     const { licenseNumber, issueDate, expiryDate, country } = dto;
 
     const user = await this.prismaService.user.findUnique({
@@ -81,6 +127,10 @@ export class UserService {
         id: userId,
       },
     });
+
+	if (!user) {
+	  throw new NotFoundException('User not found');
+	}
 
     if (!user?.birthDate) {
       throw new BadRequestException('User must have a birth date');
@@ -115,7 +165,7 @@ export class UserService {
   async updateLicenseImages(
   userId: string,
   files: { front?: Express.Multer.File[]; back?: Express.Multer.File[] },
-) {
+): Promise<DriverLicense> {
   const license = await this.prismaService.driverLicense.findUnique({
     where: { userId },
   });
@@ -128,7 +178,7 @@ export class UserService {
 
   if (files.front?.[0]) {
     if (license.frontImage) {
-      const publicId = license.frontImage.split('/').slice(-2).join('/').split('.')[0];
+      const publicId = getPublicId(license.frontImage);
       await this.cloudinary.deleteFile(publicId).catch(() => {});
     }
     const uploaded = await this.cloudinary.uploadFile(files.front[0], 'licenses');
@@ -137,7 +187,7 @@ export class UserService {
 
   if (files.back?.[0]) {
     if (license.backImage) {
-      const publicId = license.backImage.split('/').slice(-2).join('/').split('.')[0];
+      const publicId = getPublicId(license.backImage);
       await this.cloudinary.deleteFile(publicId).catch(() => {});
     }
     const uploaded = await this.cloudinary.uploadFile(files.back[0], 'licenses');
@@ -168,26 +218,16 @@ export class UserService {
     });
   }
 
-async deleteProfile(res: Response, userId: string) {
-  const user = await this.prismaService.user.findUnique({
-    where: { id: userId },
-    include: { avatar: true },
-  });
-
-  if (user?.avatar) {
-    try {
-      const publicId = user.avatar.url.split('/').slice(-2).join('/').split('.')[0];
-      await this.cloudinary.deleteFile(publicId);
-    } catch (error) {
-    }
+async deleteProfile(res: Response, userId: string): Promise<boolean> {
+    await this.authService.logout(res);
+    
+    await this.purgeUserData(userId);
+    
+    return true;
   }
 
-  const result = this.prismaService.user.delete({
-    where: { id: userId },
-  });
-
-  await this.authService.logout(res);
-
-  return result;
-}
+  async deleteUser(userId: string): Promise<boolean> {
+    await this.purgeUserData(userId);
+    return true;
+  }
 }

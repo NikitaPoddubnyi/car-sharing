@@ -20,6 +20,7 @@ model User {
   email     String      @unique
   password  String
   role      UserRole    @default(USER)
+  referralCode String   @unique
 
   phone     String?        @unique 
   birthDate DateTime?      @map("birth_date")
@@ -114,7 +115,6 @@ model Location {
   cars      Car[]     @relation("cars_location")    
   bikes     Bike[]     @relation("bikes_location")    
 
-  
   pickUpBookings  Booking[] @relation("PickUpLocation")
   dropOffBookings Booking[] @relation("DropOffLocation")
 
@@ -177,7 +177,7 @@ model BikeImage {
 }
 
 model Booking {
-    id        String      @id @default(cuid())
+  id        String      @id @default(cuid())
   bookingNo       String        @unique 
   
   // Связи
@@ -248,6 +248,7 @@ enum BodyType {
 
 enum Transmission {
   AUTOMATIC
+  MANUAL
 }
 
 enum DriveTrain {

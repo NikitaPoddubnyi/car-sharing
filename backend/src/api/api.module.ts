@@ -4,6 +4,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { getAuthConfig } from 'src/config/auth.config';
 import { UserModule } from './user/user.module';
 import { InquiryModule } from './inquiry/inquiry.module';
+import { CarModule } from './car/car.module';
+import { LocationModule } from './location/location.module';
+import { BikeModule } from './bike/bike.module';
 
 @Module({
   imports: [
@@ -14,6 +17,9 @@ import { InquiryModule } from './inquiry/inquiry.module';
     }),
     UserModule,
     InquiryModule,
+    CarModule,
+    LocationModule,
+    BikeModule,
   ],
 })
 export class ApiModule {}

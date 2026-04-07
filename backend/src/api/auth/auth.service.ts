@@ -17,6 +17,7 @@ import {
 } from '../../common/interfaces';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { LoginDto, RegisterRequest } from './dto';
+import { nanoid } from 'nanoid';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,7 @@ export class AuthService {
 		lastName,
         email,
         password: hashedPassword,
+		referralCode: nanoid(10)
       },
     });
 

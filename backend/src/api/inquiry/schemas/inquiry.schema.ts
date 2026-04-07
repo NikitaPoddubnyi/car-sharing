@@ -13,17 +13,17 @@ export class Inquiry implements IInquiry  {
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address'],
   })
-  email: string;
+  email!: string;
 
   @Prop({ required: true, minlength: 10 })
-  message: string;
+  message!: string;
 
   @Prop({
     type: String,
     enum: InquiryStatus,
     default: InquiryStatus.PENDING,
   })
-  status: InquiryStatus;
+  status!: InquiryStatus;
 }
 
 export const InquirySchema = SchemaFactory.createForClass(Inquiry);

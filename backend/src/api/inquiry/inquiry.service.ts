@@ -13,11 +13,11 @@ export class InquiryService {
   ) {}
 
   async create(dto: CreateInquiryDto): Promise<Inquiry> {
-    return this.inquiryModel.create(dto);
+    return await this.inquiryModel.create(dto);
   }
 
   async findAll(): Promise<Inquiry[]> {
-    return this.inquiryModel.find().sort({ createdAt: -1 }).exec();
+    return await this.inquiryModel.find().sort({ createdAt: -1 }).exec();
   }
 
   async findById(id: string): Promise<Inquiry> {

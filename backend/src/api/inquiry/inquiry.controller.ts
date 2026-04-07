@@ -9,25 +9,25 @@ export class InquiryController {
   constructor(private readonly inquiryService: InquiryService) {}
 
   @Post()
-  create(@Body() dto: CreateInquiryDto): Promise<Inquiry> {
-    return this.inquiryService.create(dto);
+  async create(@Body() dto: CreateInquiryDto): Promise<Inquiry> {
+    return await this.inquiryService.create(dto);
   }
 
   @Get()
-  findAll(): Promise<Inquiry[]> {
-    return this.inquiryService.findAll();
+  async findAll(): Promise<Inquiry[]> {
+    return await this.inquiryService.findAll();
   }
 
   @Get(':id')
-  findById(@Param() id: string): Promise<Inquiry> {
-    return this.inquiryService.findById(id);
+  async findById(@Param() id: string): Promise<Inquiry> {
+    return await this.inquiryService.findById(id);
   }
 
   @Patch(':id/status')
-  updateStatus(
+  async updateStatus(
   @Param('id') id: string,          
   @Body('status') status: InquiryStatus, 
   ): Promise<Inquiry> {
-  return this.inquiryService.updateStatus(id, status);
+  return await this.inquiryService.updateStatus(id, status);
 }
 }
