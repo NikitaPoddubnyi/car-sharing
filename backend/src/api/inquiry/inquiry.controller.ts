@@ -1,8 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { CreateInquiryDto } from './dto/create-inquiry.dto';
 import { InquiryService } from './inquiry.service';
 import { Inquiry } from './schemas/inquiry.schema';
 import { InquiryStatus } from './enum/status.enum';
+import { Authorization } from 'src/common/decorators';
+import { UserRole } from '@prisma/client';
+import { CreateInquiryDto, UpdateInquiryStatusDto } from './dto';
 
 @Controller('inquiries')
 export class InquiryController {
@@ -18,16 +20,18 @@ export class InquiryController {
     return await this.inquiryService.findAll();
   }
 
+  @Authorization(UserRole.ADMIN)
   @Get(':id')
   async findById(@Param() id: string): Promise<Inquiry> {
     return await this.inquiryService.findById(id);
   }
 
+  @Authorization(UserRole.ADMIN)
   @Patch(':id/status')
   async updateStatus(
-  @Param('id') id: string,          
-  @Body('status') status: InquiryStatus, 
+    @Param('id') id: string,
+    @Body() dto: UpdateInquiryStatusDto,
   ): Promise<Inquiry> {
-  return await this.inquiryService.updateStatus(id, status);
-}
+    return await this.inquiryService.updateStatus(id, dto);
+  }
 }

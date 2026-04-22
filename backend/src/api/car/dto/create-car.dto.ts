@@ -1,102 +1,132 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsString, MaxLength, MinLength, IsOptional, IsUUID } from "class-validator";
-import { BodyType, FuelType, Transmission, DriveTrain } from "@prisma/client";
-import { Transform, Type } from "class-transformer";
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  MaxLength,
+  MinLength,
+  IsOptional,
+} from 'class-validator';
+import {
+  BodyType,
+  FuelType,
+  Transmission,
+  DriveTrain,
+  VehicleStatus,
+} from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateCarDto {
-    @IsString() @IsNotEmpty()
-    brand: string;
+  @IsString()
+  @IsNotEmpty()
+  brand: string;
 
-    @IsString() @IsNotEmpty()
-    model: string;
+  @IsString()
+  @IsNotEmpty()
+  model: string;
 
-    @Type(() => Number)
-    @IsNumber() @IsNotEmpty()
-    year: number;
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty()
+  year: number;
 
-    @IsEnum(BodyType) @IsNotEmpty()
-    bodyType: BodyType;
+  @IsEnum(BodyType)
+  @IsNotEmpty()
+  bodyType: BodyType;
 
-    @Type(() => Number)
-    @IsNumber() @IsNotEmpty()
-    seats: number;
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty()
+  seats: number;
 
-    @Type(() => Number)
-    @IsNumber() @IsNotEmpty()
-    doors: number;
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty()
+  doors: number;
 
-    @Type(() => Number)
-    @IsNumber() @IsNotEmpty()
-    luggage: number;
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty()
+  luggage: number;
 
-    @IsEnum(Transmission) @IsNotEmpty()
-    transmission: Transmission;
+  @IsEnum(Transmission)
+  @IsNotEmpty()
+  transmission: Transmission;
 
-    @IsEnum(DriveTrain) @IsNotEmpty()
-    driveTrain: DriveTrain;
+  @IsEnum(DriveTrain)
+  @IsNotEmpty()
+  driveTrain: DriveTrain;
 
-    @IsEnum(FuelType) @IsNotEmpty()
-    fuelType: FuelType;
+  @IsEnum(FuelType)
+  @IsNotEmpty()
+  fuelType: FuelType;
 
-    @Type(() => Number)
-    @IsNumber() @IsNotEmpty()
-    engineSize: number;
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty()
+  engineSize: number;
 
-    @Type(() => Number)
-    @IsNumber() @IsNotEmpty()
-    mileage: number;
+  @Type(() => Number)
+  @IsNumber()
+  @IsNotEmpty()
+  mileage: number;
 
-    @Type(() => Number)
-    @IsNotEmpty() 
-    pricePerDay: number;
+  @Type(() => Number)
+  @IsNotEmpty()
+  pricePerDay: number;
 
-    @Type(() => Number)
-    @IsNotEmpty()
-    pricePerHour: number;
+  @Type(() => Number)
+  @IsNotEmpty()
+  pricePerHour: number;
 
-    @IsString() @IsNotEmpty()
-    locationId: string; 
+  @IsString()
+  @IsNotEmpty()
+  locationId: string;
 
-    @IsString() @IsOptional()
-    @MinLength(10, { message: 'Description should be at least 10 characters' })
-	@MaxLength(1000, { message: 'Description should not exceed 1000 characters' })
-    description?: string;
+  @IsString()
+  @IsOptional()
+  @MinLength(10, { message: 'Description should be at least 10 characters' })
+  @MaxLength(1000, { message: 'Description should not exceed 1000 characters' })
+  description?: string;
 
-    @IsBoolean() @IsOptional()
-    @Transform(({ value }) => {
+  @IsBoolean()
+  @IsOptional()
+  @Transform(({ value }) => {
     if (value === 'true') return true;
     if (value === 'false') return false;
     return value;
-    })
-    isAvailable?: boolean;
+  })
+  isAvailable?: boolean;
 }
 
 //   id        String      @id @default(cuid())
-//   brand         String   
-//   model         String   
-//   year          Int     
-  
+//   brand         String
+//   model         String
+//   year          Int
+
 //   bodyType      BodyType @default(SEDAN)
 //   seats         Int      // 2
 //   doors         Int      // 2
 //   luggage       Int      // Объем багажника (150)
-//   transmission  Transmission  @default(AUTOMATIC) 
+//   transmission  Transmission  @default(AUTOMATIC)
 //   driveTrain    DriveTrain    @default(FWD)
 //   mileage       Int      // Пробег
 //   fuelType      FuelType      @default(PETROL)
-//   engineSize    Int      
+//   engineSize    Int
 
-//   pricePerDay   Decimal  @db.Decimal(10, 2) 
+//   pricePerDay   Decimal  @db.Decimal(10, 2)
 //   pricePerHour  Decimal  @db.Decimal(10, 2)
 
 //   location      Location @relation("cars_location", fields: [locationId], references: [id], onDelete: Restrict)
 //   locationId    String      @map("location_id")
 
-//   isAvailable   Boolean  @default(true)      
-  
-//   description   String?  @db.Text           
+//   isAvailable   Boolean  @default(true)
 
-//   images        CarImage[]                  
-//   bookings      Booking[]  @relation("booking_car")                 
+//   description   String?  @db.Text
+
+//   images        CarImage[]
+//   bookings      Booking[]  @relation("booking_car")
 
 //   createdAt     DateTime @default(now()) @map("created_at")
 //   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -113,15 +143,14 @@ export class CreateCarDto {
 
 // model Location {
 //   id        String      @id @default(cuid())
-//   name      String    @unique 
-//   city      String    
-//   lat       Float?    
-//   lng       Float?    
+//   name      String    @unique
+//   city      String
+//   lat       Float?
+//   lng       Float?
 
-//   cars      Car[]     @relation("cars_location")    
-//   bikes     Bike[]     @relation("bikes_location")    
+//   cars      Car[]     @relation("cars_location")
+//   bikes     Bike[]     @relation("bikes_location")
 
-  
 //   pickUpBookings  Booking[] @relation("PickUpLocation")
 //   dropOffBookings Booking[] @relation("DropOffLocation")
 

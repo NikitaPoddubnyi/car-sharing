@@ -5,13 +5,13 @@ import { InquiryService } from './inquiry.service';
 import { Inquiry, InquirySchema } from './schemas/inquiry.schema';
 
 @Module({
-   imports: [
+  imports: [
     MongooseModule.forFeature([
       {
         name: Inquiry.name,
         schema: InquirySchema,
       },
-    ])
+    ]),
   ],
   controllers: [InquiryController],
   providers: [InquiryService],

@@ -12,7 +12,7 @@ import { getMongodbConfig } from 'src/config/mongodb.config';
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: getMongodbConfig,
-      }),
+    }),
   ],
 })
 export class InfraModule {}

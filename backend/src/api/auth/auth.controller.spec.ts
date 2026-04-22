@@ -20,7 +20,7 @@ describe('AuthController', () => {
   } as unknown as Request;
 
   const mockUser: Partial<User> = {
-    id: "cv356t5346bgrrvrg",
+    id: 'cv356t5346bgrrvrg',
     email: 'test@example.com',
   };
 

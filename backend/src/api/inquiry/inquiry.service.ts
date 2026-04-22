@@ -2,9 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Inquiry } from './schemas/inquiry.schema';
-import { CreateInquiryDto } from './dto/create-inquiry.dto';
 import { InquiryDocument } from './types/inquiry.type';
-import { InquiryStatus } from './enum/status.enum';
+import { CreateInquiryDto, UpdateInquiryStatusDto } from './dto';
 
 @Injectable()
 export class InquiryService {
@@ -28,7 +27,11 @@ export class InquiryService {
     return inquiry;
   }
 
-  async updateStatus(id: string, status: InquiryStatus): Promise<InquiryDocument> {
+  async updateStatus(
+    id: string,
+    dto: UpdateInquiryStatusDto,
+  ): Promise<InquiryDocument> {
+    const { status } = dto;
     const inquiry = await this.inquiryModel
       .findByIdAndUpdate(id, { status }, { new: true })
       .exec();

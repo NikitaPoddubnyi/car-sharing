@@ -1,5 +1,5 @@
 import { UserService } from './user.service';
-import { Authorization } from 'src/common/decorators';
+import { Authorization, Public } from 'src/common/decorators';
 import { Authorized } from 'src/common/decorators';
 import { UserRole, type User } from '@prisma/client';
 import {
@@ -15,13 +15,22 @@ import {
   ParseFilePipe,
   Patch,
   Post,
+  Query,
   Res,
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
-import { UpdateLicenseDto, CompleteProfileDto } from './dto';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
+import {
+  UpdateLicenseDto,
+  CompleteProfileDto,
+  GetReferralCodeDto,
+  SetLicenseStatusDto,
+} from './dto';
 import type { Response } from 'express';
 
 @Controller()
@@ -35,17 +44,27 @@ export class UserController {
     return await this.userService.findById(userId);
   }
 
-  @Get(':id') 
+  @Get(':id')
   @HttpCode(HttpStatus.OK)
-  @Authorization(UserRole.ADMIN) 
+  @Authorization(UserRole.ADMIN)
   async getUserById(@Param('id') id: string) {
-  return await this.userService.findById(id);
+    return await this.userService.findById(id);
+  }
+
+  @Public()
+  @Post('check-user')
+  async getReferralCode(@Body() dto: GetReferralCodeDto) {
+    const result = await this.userService.getReferralCode(dto);
+    return result;
   }
 
   @Get('users')
   @Authorization(UserRole.ADMIN)
-  async getUsers() {
-    return await this.userService.findAll();
+  async getUsers(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ) {
+    return await this.userService.findAll(page, limit);
   }
 
   @Post('profile/avatar')
@@ -66,24 +85,24 @@ export class UserController {
     return await this.userService.updateAvatar(userId, file);
   }
 
-@Patch('profile/license') 
-@Authorization()
-@UseInterceptors(
-  FileFieldsInterceptor([
-    { name: 'front', maxCount: 1 },
-    { name: 'back', maxCount: 1 },
-  ]),
-)
-async completeLicense(
-  @Authorized('id') userId: string,
-  @Body() dto: UpdateLicenseDto, 
-  @UploadedFiles() files: { front?: Express.Multer.File[]; back?: Express.Multer.File[] },
-) {
+  @Patch('profile/license')
+  @Authorization()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'front', maxCount: 1 },
+      { name: 'back', maxCount: 1 },
+    ]),
+  )
+  async completeLicense(
+    @Authorized('id') userId: string,
+    @Body() dto: UpdateLicenseDto,
+    @UploadedFiles()
+    files: { front?: Express.Multer.File[]; back?: Express.Multer.File[] },
+  ) {
+    await this.userService.updateLicense(userId, dto);
 
-  await this.userService.updateLicense(userId, dto);
-
-  return await this.userService.updateLicenseImages(userId, files);
-}
+    return await this.userService.updateLicenseImages(userId, files);
+  }
 
   @Patch('profile/complete')
   @Authorization()
@@ -96,13 +115,25 @@ async completeLicense(
 
   @Delete('profile')
   @Authorization()
-  async deleteProfile(@Res({ passthrough: true }) res: Response, @Authorized('id') userId: string) {
+  async deleteProfile(
+    @Res({ passthrough: true }) res: Response,
+    @Authorized('id') userId: string,
+  ) {
     return await this.userService.deleteProfile(res, userId);
   }
 
   @Delete(':id')
   @Authorization(UserRole.ADMIN)
-  async deleteUser( @Authorized('id') userId: string) {
+  async deleteUser(@Authorized('id') userId: string) {
     return await this.userService.deleteUser(userId);
+  }
+
+  @Patch(':id/license/status')
+  @Authorization(UserRole.ADMIN)
+  async changeLicenseStatus(
+    @Param('id') userId: string,
+    @Body() dto: SetLicenseStatusDto,
+  ) {
+    return await this.userService.changeLicenseStatus(userId, dto);
   }
 }

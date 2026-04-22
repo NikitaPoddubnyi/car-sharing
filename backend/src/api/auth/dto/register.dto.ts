@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   MaxLength,
   Min,
@@ -11,54 +12,61 @@ import {
 
 export class RegisterRequest {
   @ApiProperty({
-    description: 'Имя пользователя',
-    example: 'Иван',
+    description: 'Name of user',
+    example: 'John',
     type: String,
     required: true,
     minLength: 3,
     maxLength: 50,
   })
-  @IsString({ message: 'Имя должно быть строкой' })
-  @IsNotEmpty({ message: 'Имя не должно быть пустым' })
-  @MinLength(3, { message: 'Имя не должно быть короче 3 символов' })
-  @MaxLength(50, { message: 'Имя не должно превышать 50 символов' })
+  @IsString({ message: 'Name should be a string' })
+  @IsNotEmpty({ message: 'Name should not be empty' })
+  @MinLength(3, { message: 'Name should be at least 3 characters' })
+  @MaxLength(50, { message: 'Name should not exceed 50 characters' })
   firstName: string;
 
   @ApiProperty({
-	description: 'Фамилия пользователя',
-	example: 'Иванов',
-	type: String,
-	required: true,
-	minLength: 3,
-	maxLength: 50,
+    description: 'Last name of user',
+    example: 'Doe',
+    type: String,
+    required: true,
+    minLength: 3,
+    maxLength: 50,
   })
-  @IsString({ message: 'Фамилия должна быть строкой' })
-  @IsNotEmpty({ message: 'Фамилия не должна быть пустой' })
-  @MinLength(3, { message: 'Фамилия не должна быть короче 3 символов' })
-  @MaxLength(50, { message: 'Фамилия не должна превышать 50 символов' })
+  @IsString({ message: 'Last name should be a string' })
+  @IsNotEmpty({ message: 'Last name should not be empty' })
+  @MinLength(3, { message: 'Last name should be at least 3 characters' })
+  @MaxLength(50, { message: 'Last name should not exceed 50 characters' })
   lastName: string;
 
   @ApiProperty({
-    description: 'Email пользователя',
+    description: 'Email of user',
     example: 'hM0aR@example.com',
     type: String,
     required: true,
   })
   @IsEmail()
-  @IsNotEmpty({ message: 'Email не должен быть пустым' })
+  @IsNotEmpty({ message: 'Email should not be empty' })
   email: string;
 
   @ApiProperty({
-    description: 'Пароль пользователя',
+    description: 'Password of user',
     example: 'rdgttsdv23',
     type: String,
     required: true,
     minLength: 6,
     maxLength: 128,
   })
-  @IsString({ message: 'Пароль должен быть строкой' })
-  @IsNotEmpty({ message: 'Пароль не должен быть пустым' })
-  @MinLength(6, { message: 'Пароль не должен быть короче 6 символов' })
-  @MaxLength(128, { message: 'Пароль не должен превышать 50 символов' })
+  @IsString({ message: 'Password should be a string' })
+  @IsNotEmpty({ message: 'Password should not be empty' })
+  @MinLength(6, { message: 'Password should be at least 6 characters' })
+  @MaxLength(128, { message: 'Password should not exceed 128 characters' })
   password: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3, { message: 'Referral code should be at least 3 characters' })
+  @MaxLength(15, { message: 'Referral code should not exceed 15 characters' })
+  referralCode?: string;
 }

@@ -7,7 +7,7 @@ import { IInquiry } from '../interfaces/inquiry.interface';
   collection: 'inquiries',
   versionKey: false,
 })
-export class Inquiry implements IInquiry  {
+export class Inquiry implements IInquiry {
   @Prop({
     required: true,
     trim: true,

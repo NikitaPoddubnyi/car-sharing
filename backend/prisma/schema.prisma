@@ -21,6 +21,7 @@ model User {
   password  String
   role      UserRole    @default(USER)
   referralCode String   @unique
+  referredBy   String? @map("referred_by")
 
   phone     String?        @unique 
   birthDate DateTime?      @map("birth_date")
@@ -28,6 +29,9 @@ model User {
   avatar    UserAvatar? @relation("user_avatar")
   license   DriverLicense?
   bookings  Booking[]    @relation("booking_user")
+
+  cars      Car[]        @relation("users_cars")
+  bikes     Bike[]        @relation("users_bikes")
 
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")
@@ -86,6 +90,9 @@ model Car {
   fuelType      FuelType      @default(PETROL)
   engineSize    Int      
 
+  owner         User     @relation("users_cars", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId       String      @map("owner_id")
+
   pricePerDay   Decimal  @db.Decimal(10, 2) 
   pricePerHour  Decimal  @db.Decimal(10, 2)
 
@@ -97,7 +104,9 @@ model Car {
   description   String?  @db.Text           
 
   images        CarImage[]                  
-  bookings      Booking[]  @relation("booking_car")                 
+  bookings      Booking[]  @relation("booking_car")         
+
+  status        VehicleStatus @default(PENDING)        
 
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -147,6 +156,9 @@ model Bike {
   tyreType       TyreType @default(FLAT)
   engineSize    Int      
 
+  owner         User     @relation("users_bikes", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId       String      @map("owner_id") 
+
   pricePerDay   Decimal  @db.Decimal(10, 2) 
   pricePerHour  Decimal  @db.Decimal(10, 2)
 
@@ -158,7 +170,9 @@ model Bike {
   description   String?  @db.Text           
 
   images        BikeImage[]                  
-  bookings      Booking[]  @relation("booking_bike")                  
+  bookings      Booking[]  @relation("booking_bike")  
+
+  status        VehicleStatus @default(PENDING)                
 
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -263,6 +277,12 @@ enum UserRole {
 }
 
 enum DriverLicenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum VehicleStatus {
   PENDING
   APPROVED
   REJECTED

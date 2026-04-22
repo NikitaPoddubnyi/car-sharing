@@ -1,8 +1,10 @@
 import { ConfigService } from '@nestjs/config';
 import { getClaudinaryConfig } from 'src/config/claudinary.config';
 
+export const CLOUDINARY_OPTIONS_SYMBOL = Symbol('CloudinaryOptions');
+
 export const CloudinaryProvider = {
-  provide: 'CLOUDINARY', 
+  provide: CLOUDINARY_OPTIONS_SYMBOL,
   useFactory: getClaudinaryConfig,
   inject: [ConfigService],
 };

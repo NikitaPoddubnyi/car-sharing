@@ -51,7 +51,7 @@ export class AuthModule {
       ],
       controllers: [AuthController],
       exports: [AuthService],
-      global: true
+      global: true,
     };
   }
 
@@ -78,7 +78,7 @@ export class AuthModule {
       ],
       controllers: [AuthController],
       exports: [AuthService],
-      global: true
+      global: true,
     };
   }
 }

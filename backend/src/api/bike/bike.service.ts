@@ -1,212 +1,348 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  Bike,
+  BookingStatus,
+  Prisma,
+  UserRole,
+  VehicleStatus,
+} from '@prisma/client';
 import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
-import { CreateBikeDto, UpdateBikeDto } from './dto';
-import { Bike, BikeImage, Location, Prisma } from '@prisma/client';
-import { getPublicId } from 'src/common/helpers';
+import {
+  CreateBikeDto,
+  UpdateBikeAvailabilityDto,
+  UpdateBikeDto,
+  UpdateBikeStatusDto,
+} from './dto';
+import { BikeWithDetails, ConflictingBooking } from './types';
+import { deleteImagesFromCloudinary, prepareImagesData } from './utils';
+import { BIKE_MESSAGES, CLOUDINARY_FOLDERS } from './constants';
+import { createBookingsFilter, overlapWhere } from 'src/common/helpers';
 
 @Injectable()
 export class BikeService {
-	constructor(private readonly prismaService: PrismaService,
-		private readonly cloudinary: CloudinaryService
-	) {}
-		async findAll(): Promise<Bike[]> {
-			return await this.prismaService.bike.findMany({
-				include: { images: true, location: true }
-			});
-		}
-	
-		async findOne(id: string): Promise<Bike & { images: BikeImage[]; location: Location }> {
-			const bike = await this.prismaService.bike.findUnique({
-				where: { id },
-				include: { images: true, location: true }
-			});
-	
-			if (!bike) throw new NotFoundException('Bike not found');
-			return bike;
-		}
-	
-		async create(dto: CreateBikeDto, files: { images: Express.Multer.File[]}): Promise<Bike> {
-			const { locationId, ...bikeData } = dto;
-	
-			const location = await this.prismaService.location.findUnique({
-				where: { id: locationId },
-			});
-	
-			if (!location) {
-				throw new NotFoundException('Location not found');
-			}
-	
-			const uploaded = await this.cloudinary.uploadFiles(files.images, "bikes");
-	
-			if (!uploaded || uploaded.length === 0) {
-				throw new BadRequestException('No images uploaded');
-			}
-	
-			const imagesToCreate = uploaded.map((image, index) => ({
-				url: image.secure_url,
-				isPrimary: index === 0, 
-			}));
-	
-			const bike = await this.prismaService.bike.create({
-				data: {
-					...bikeData,
-					location: {
-						connect: {
-							id: locationId,
-						},
-					},
-					images: {
-						create: imagesToCreate,
-					},
-				},
-				include: { images: true, location: true },
-			});
-	
-			return bike;
-		}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
-		async update(id: string, dto: UpdateBikeDto, files?: { images?: Express.Multer.File[]}): Promise<Bike> {
-			const bike = await this.findOne(id);
-			const { locationId, ...bikeData } = dto;
+  async findOne(id: string): Promise<BikeWithDetails> {
+    const bike = await this.prismaService.bike.findUnique({
+      where: { id },
+      include: { images: true, location: true },
+    });
 
-			let imagesToCreate: { url: string; isPrimary: boolean }[] | undefined;
+    if (!bike) throw new NotFoundException(BIKE_MESSAGES.NOT_FOUND);
+    return bike;
+  }
 
-			if (files?.images && files.images.length > 0) {
-				const uploaded = await this.cloudinary.uploadFiles(files.images, "bikes");
+  async findAllForAdmin(
+    page = 1,
+    limit = 20,
+  ): Promise<{ items: Bike[]; meta: any }> {
+    const skip = (page - 1) * limit;
 
-				await	Promise.all(
-					bike.images.map(async (image) => {
-						const publicId = getPublicId(image.url);
-						await this.cloudinary.deleteFile(publicId).catch(() => {});
-					})
-				);
+    const [items, total] = await Promise.all([
+      this.prismaService.bike.findMany({
+        include: {
+          images: true,
+          location: true,
+          owner: {
+            select: { id: true, email: true, firstName: true, lastName: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prismaService.bike.count(),
+    ]);
 
-				imagesToCreate = uploaded.map((image, index) => ({
-					url: image.secure_url,
-					isPrimary: index === 0,
-				}));
-			}
+    return {
+      items,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
 
-			const updatedData: Prisma.BikeUpdateInput = {
-				...bikeData,
-			}
+  async findAvailableBikes(
+    locationId?: string,
+    startDate?: Date,
+    endDate?: Date,
+    page = 1,
+    limit = 20,
+  ): Promise<{ items: Bike[]; meta: any }> {
+    const skip = (page - 1) * limit;
+    const bookingsFilter = createBookingsFilter(startDate, endDate);
+    const hasDates = startDate && endDate;
 
-			if (locationId) {
-    			const location = await this.prismaService.location.findUnique({
-        		where: { id: locationId },
-    		});
-    			if (!location) throw new NotFoundException('Location not found');
-    			updatedData.location = { connect: { id: locationId } };
-			}
+    const where: any = {
+      status: VehicleStatus.APPROVED,
+      isAvailable: true,
+    };
 
-			if (imagesToCreate) {
-				updatedData.images = {
-					deleteMany: {},
-					create: imagesToCreate,
-				};
-			}
+    if (locationId) {
+      where.locationId = locationId;
+    }
 
-			return this.prismaService.bike.update({
-				where: { id },
-				data: updatedData,
-				include: { images: true, location: true },
-			});
-		}
+    if (bookingsFilter) {
+      where.bookings = bookingsFilter;
+    }
 
-async updateImages(id: string, files: { images: Express.Multer.File[] }): Promise<Bike> {
+    const [items, total] = await Promise.all([
+      this.prismaService.bike.findMany({
+        where,
+        include: { images: true, location: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prismaService.bike.count({ where }),
+    ]);
 
-    if (!files.images || files.images.length === 0) {
-        throw new BadRequestException('No images uploaded');
+    const bikeIds = items.map((bike) => bike.id);
+
+    let bookedStatusMap: Map<string | null, boolean> = new Map();
+
+    if (!hasDates) {
+      const dateBookings = await this.prismaService.booking.groupBy({
+        by: ['bikeId'],
+        where: {
+          bikeId: { in: bikeIds },
+          status: BookingStatus.BOOKING,
+          endDate: { gt: new Date() },
+        },
+      });
+
+      bookedStatusMap = new Map(dateBookings.map((b) => [b.bikeId, true]));
+    }
+
+    const itemsWithStatus = items.map((bike) => ({
+      ...bike,
+      isBooked: bookedStatusMap.get(bike.id) || false,
+    }));
+
+    return {
+      items: itemsWithStatus,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async checkBikeAvailability(
+    bikeId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<{ available: boolean; conflicts: ConflictingBooking[] }> {
+    const conflicts = await this.prismaService.booking.findMany({
+      where: { bikeId, ...overlapWhere(startDate, endDate) },
+      select: { id: true, startDate: true, endDate: true },
+    });
+
+    return { available: conflicts.length === 0, conflicts };
+  }
+
+  async create(
+    dto: CreateBikeDto,
+    files: { images: Express.Multer.File[] },
+    ownerId: string,
+    userRole: UserRole,
+  ): Promise<Bike> {
+    const { locationId, ...bikeData } = dto;
+
+    const [existingBike, location] = await Promise.all([
+      this.prismaService.bike.findFirst({
+        where: {
+          brand: bikeData.brand,
+          model: bikeData.model,
+          year: bikeData.year,
+          mileage: bikeData.mileage,
+          ownerId,
+        },
+      }),
+      this.prismaService.location.findUnique({ where: { id: locationId } }),
+    ]);
+
+    if (existingBike) {
+      throw new BadRequestException(BIKE_MESSAGES.DUPLICATE_BIKE);
+    }
+    if (!location) {
+      throw new NotFoundException(BIKE_MESSAGES.LOCATION_NOT_FOUND);
+    }
+
+    const uploaded = await this.cloudinary.uploadFiles(
+      files.images,
+      CLOUDINARY_FOLDERS.BIKES,
+    );
+    if (!uploaded?.length) {
+      throw new BadRequestException(BIKE_MESSAGES.NO_IMAGES);
+    }
+
+    return this.prismaService.bike.create({
+      data: {
+        ...bikeData,
+        status:
+          userRole === UserRole.ADMIN
+            ? VehicleStatus.APPROVED
+            : VehicleStatus.PENDING,
+        owner: { connect: { id: ownerId } },
+        location: { connect: { id: locationId } },
+        images: { create: prepareImagesData(uploaded) },
+      },
+      include: { images: true, location: true },
+    });
+  }
+
+  async update(
+    id: string,
+    dto: UpdateBikeDto,
+    files: { images?: Express.Multer.File[] },
+    ownerId?: string,
+    userRole?: UserRole,
+  ): Promise<Bike> {
+    const bike = await this.findOne(id);
+
+    if (bike.ownerId !== ownerId && userRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(BIKE_MESSAGES.FORBIDDEN_UPDATE);
+    }
+
+    const { locationId, status, newOwnerId, ...bikeData } = dto;
+    const updateData: Prisma.BikeUpdateInput = { ...bikeData };
+
+    if (locationId) {
+      const location = await this.prismaService.location.findUnique({
+        where: { id: locationId },
+      });
+      if (!location)
+        throw new NotFoundException(BIKE_MESSAGES.LOCATION_NOT_FOUND);
+      updateData.location = { connect: { id: locationId } };
+    }
+
+    if (newOwnerId && userRole === UserRole.ADMIN) {
+      const newOwner = await this.prismaService.user.findUnique({
+        where: { id: newOwnerId },
+      });
+      if (!newOwner)
+        throw new NotFoundException(BIKE_MESSAGES.NEW_OWNER_NOT_FOUND);
+      updateData.owner = { connect: { id: newOwnerId } };
+    }
+
+    if (status && userRole === UserRole.ADMIN) {
+      updateData.status = status;
+    }
+
+    if (files?.images?.length) {
+      const uploaded = await this.cloudinary.uploadFiles(
+        files.images,
+        CLOUDINARY_FOLDERS.BIKES,
+      );
+      updateData.images = {
+        deleteMany: {},
+        create: prepareImagesData(uploaded),
+      };
+      await deleteImagesFromCloudinary(this.cloudinary, bike.images);
+    }
+
+    return this.prismaService.bike.update({
+      where: { id },
+      data: updateData,
+      include: { images: true, location: true },
+    });
+  }
+
+  async updateImages(
+    id: string,
+    files: { images: Express.Multer.File[] },
+  ): Promise<Bike> {
+    if (!files.images?.length) {
+      throw new BadRequestException(BIKE_MESSAGES.NO_IMAGES);
     }
 
     const bike = await this.findOne(id);
+    const uploaded = await this.cloudinary.uploadFiles(
+      files.images,
+      CLOUDINARY_FOLDERS.BIKES,
+    );
 
-    return await this.prismaService.$transaction(async (prisma) => {
-        const uploaded = await this.cloudinary.uploadFiles(files.images, 'bikes');
-        
-        const imagesToCreate = uploaded.map((image, index) => ({
-            url: image.secure_url,
-            isPrimary: index === 0,
-        }));
-
-        await prisma.bikeImage.deleteMany({ where: { bikeId: id } });
-
-        const updatedBike = await prisma.bike.update({
-            where: { id },
-            data: {
-                images: {
-                    create: imagesToCreate,
-                },
-            },
-            include: { images: true, location: true },
-        });
-
-        await Promise.all(
-            bike.images.map(async (image) => {
-                const publicId = getPublicId(image.url);
-                await this.cloudinary.deleteFile(publicId).catch((err) => {
-                });
-            })
-        );
-
-        return updatedBike;
+    const updatedBike = await this.prismaService.bike.update({
+      where: { id },
+      data: {
+        images: {
+          deleteMany: {},
+          create: prepareImagesData(uploaded),
+        },
+      },
+      include: { images: true, location: true },
     });
+
+    await deleteImagesFromCloudinary(this.cloudinary, bike.images);
+    return updatedBike;
+  }
+
+  async updateLocation(id: string, locationId: string): Promise<Bike> {
+    if (!locationId) {
+      throw new BadRequestException(BIKE_MESSAGES.LOCATION_ID_REQUIRED);
+    }
+
+    const location = await this.prismaService.location.findUnique({
+      where: { id: locationId },
+    });
+    if (!location)
+      throw new NotFoundException(BIKE_MESSAGES.LOCATION_NOT_FOUND);
+
+    return this.prismaService.bike.update({
+      where: { id },
+      data: { location: { connect: { id: locationId } } },
+      include: { images: true, location: true },
+    });
+  }
+
+  async updateStatus(id: string, dto: UpdateBikeStatusDto): Promise<Bike> {
+    await this.findOne(id);
+
+    return this.prismaService.bike.update({
+      where: { id },
+      data: { status: dto.status },
+      include: {
+        images: true,
+        location: true,
+        owner: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+      },
+    });
+  }
+
+  async updateAvailability(
+    id: string,
+    dto: UpdateBikeAvailabilityDto,
+  ): Promise<Bike> {
+    const bike = await this.findOne(id);
+
+    return this.prismaService.bike.update({
+      where: { id },
+      data: { isAvailable: dto.isAvailable },
+      include: { images: true, location: true },
+    });
+  }
+
+  async delete(
+    id: string,
+    ownerId: string,
+    userRole: UserRole,
+  ): Promise<boolean> {
+    const bike = await this.findOne(id);
+
+    if (bike.ownerId !== ownerId && userRole !== UserRole.ADMIN) {
+      throw new ForbiddenException(BIKE_MESSAGES.FORBIDDEN_DELETE);
+    }
+
+    await this.prismaService.bike.delete({ where: { id } });
+    await deleteImagesFromCloudinary(this.cloudinary, bike.images);
+
+    return true;
+  }
 }
-	
-	async updateLocation(id: string, locationId: string): Promise<Bike> {
-		if (!locationId) {
-			throw new BadRequestException('locationId is required');
-		}
-		
-		const bike = await this.findOne(id);
-		
-		const location = await this.prismaService.location.findUnique({
-			where: { id: locationId },
-		});
-		
-		if (!location) {
-			throw new NotFoundException('Location not found');
-		}
-		
-		return this.prismaService.bike.update({
-			where: { id },
-			data: {
-				location: { connect: { id: locationId } },
-			},
-			include: { images: true, location: true },
-		});
-	}
-	
-	async updateAvailability(id: string, isAvailable: boolean): Promise<Bike> {
-		if (isAvailable === undefined) {
-			throw new BadRequestException('isAvailable is required');
-		}
-		
-		if (typeof isAvailable !== 'boolean') {
-			throw new BadRequestException('isAvailable must be a boolean');
-		}
-		
-		await this.findOne(id);
-		
-		return this.prismaService.bike.update({
-			where: { id },
-			data: { isAvailable },
-			include: { images: true, location: true },
-		});
-	}
-	
-		async delete(id: string): Promise<boolean> {
-			const bike = await this.findOne(id);
-			
-			await Promise.all(
-				bike.images.map(async (image) => {
-					const publicId = getPublicId(image.url);
-					await this.cloudinary.deleteFile(publicId).catch(() => {});
-				})
-			)
-			
-			await this.prismaService.bike.delete({ where: { id } });
-			return true;
-		}
-	}

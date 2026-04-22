@@ -1,88 +1,180 @@
-import { Body, Controller, Delete, FileTypeValidator, Get, MaxFileSizeValidator, Param, ParseFilePipe, Patch, Post, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  DefaultValuePipe,
+  Delete,
+  FileTypeValidator,
+  Get,
+  MaxFileSizeValidator,
+  Param,
+  ParseFilePipe,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
 import { CarService } from './car.service';
-import { Authorization } from 'src/common/decorators';
-import { UserRole } from '@prisma/client';
+import { Authorization, Authorized, Public } from 'src/common/decorators';
+import { type User, UserRole, VehicleStatus } from '@prisma/client';
 import { CreateCarDto } from './dto/create-car.dto';
-import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { UpdateCarDto } from './dto';
+import {
+  FileFieldsInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
+import {
+  UpdateCarAvailabilityDto,
+  UpdateCarDto,
+  UpdateCarStatusDto,
+} from './dto';
 
 @Controller('cars')
 export class CarController {
   constructor(private readonly carService: CarService) {}
 
-  @Get()
-  async findAll() {
-    return await this.carService.findAll();
+  @Public()
+  @Get('all')
+  async findAll(
+    @Query('locationId') locationId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number = 20,
+  ) {
+    return await this.carService.findAvailableCars(
+      locationId,
+      startDate ? new Date(startDate) : undefined,
+      endDate ? new Date(endDate) : undefined,
+      page,
+      limit,
+    );
   }
 
+  @Get(':id/availability')
+  async checkAvailability(
+    @Param('id') id: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return await this.carService.checkCarAvailability(
+      id,
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
+  @Public()
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.carService.findOne(id);
   }
 
+  @Get('admin/all')
   @Authorization(UserRole.ADMIN)
-  @Post()
-  @UseInterceptors(FilesInterceptor('images', 10))
-  async create(@Body() dto: CreateCarDto,
-   @UploadedFiles(
-          new ParseFilePipe({
-          validators: [
-            new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
-            new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
-          ],
-        })) 
-        files: Express.Multer.File[]) {
-    return await this.carService.create(dto, { images: files });
+  async findAllForAdmin(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ) {
+    return this.carService.findAllForAdmin(page, limit);
   }
 
-   @Authorization(UserRole.ADMIN)
-   @Patch(':id')
-    @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 10 }]))
-    async update(
-        @Param('id') id: string,
-        @Body() dto: UpdateCarDto,
-        @UploadedFiles() files: { images?: Express.Multer.File[] }
-    ) {
-        return this.carService.update(id, dto, { images: files.images });
-    }
+  @Authorization(UserRole.ADMIN)
+  @Patch(':id/status')
+  async updateStatus(@Param('id') id: string, @Body() dto: UpdateCarStatusDto) {
+    return await this.carService.updateStatus(id, dto);
+  }
 
-    @Authorization(UserRole.ADMIN)
-    @Patch(':id/images')
-    @UseInterceptors(FileFieldsInterceptor([{ name: 'images', maxCount: 10 }]))
-    async updateImages(
-        @Param('id') id: string,
-        @UploadedFiles( new ParseFilePipe({
-            validators: [
-                new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
-                new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
-            ],
-        })
-    ) files: { images: Express.Multer.File[] }
-    ) {
-        return this.carService.updateImages(id, { images: files.images });
-    }
+  @Post()
+  @Authorization(UserRole.USER, UserRole.ADMIN)
+  @UseInterceptors(FilesInterceptor('images', 10))
+  async create(
+    @Body() dto: CreateCarDto,
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+      }),
+    )
+    files: Express.Multer.File[],
+    @Authorized() user: User,
+  ) {
+    return await this.carService.create(
+      dto,
+      { images: files },
+      user.id,
+      user.role,
+    );
+  }
 
-    @Authorization(UserRole.ADMIN)
-    @Patch(':id/location')
-    async updateLocation(
-        @Param('id') id: string,
-        @Body('locationId') locationId: string
-    ) {
-        return this.carService.updateLocation(id, locationId);
-    }
+  @Patch(':id')
+  @Authorization(UserRole.USER, UserRole.ADMIN)
+  @UseInterceptors(FilesInterceptor('images', 10))
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCarDto,
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+        fileIsRequired: false,
+      }),
+    )
+    files: Express.Multer.File[],
+    @Authorized() user: User,
+  ) {
+    return this.carService.update(
+      id,
+      dto,
+      { images: files },
+      user.id,
+      user.role,
+    );
+  }
 
-    @Authorization(UserRole.ADMIN)
-    @Patch(':id/availability')
-    async updateAvailability(
-        @Param('id') id: string,
-        @Body('isAvailable') isAvailable: boolean
-    ) {
-        return this.carService.updateAvailability(id, isAvailable);
-    }
+  @Authorization(UserRole.ADMIN, UserRole.USER)
+  @Patch(':id/images')
+  @UseInterceptors(FilesInterceptor('images', 10))
+  async updateImages(
+    @Param('id') id: string,
+    @UploadedFiles(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 1024 * 1024 * 2 }),
+          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|webp)' }),
+        ],
+      }),
+    )
+    files: Express.Multer.File[],
+  ) {
+    return this.carService.updateImages(id, { images: files });
+  }
 
-    @Authorization(UserRole.ADMIN)
-    @Delete(':id')
-    async delete(@Param('id') id: string) {
-        return this.carService.delete(id);
-    }
+  @Authorization(UserRole.ADMIN)
+  @Patch(':id/location')
+  async updateLocation(
+    @Param('id') id: string,
+    @Body('locationId') locationId: string,
+  ) {
+    return this.carService.updateLocation(id, locationId);
+  }
+
+  @Authorization(UserRole.ADMIN)
+  @Patch(':id/availability')
+  async updateAvailability(
+    @Param('id') id: string,
+    @Body() dto: UpdateCarAvailabilityDto,
+  ) {
+    return this.carService.updateAvailability(id, dto);
+  }
+
+  @Authorization(UserRole.USER, UserRole.ADMIN)
+  @Delete(':id')
+  async delete(@Param('id') id: string, @Authorized() user: User) {
+    return this.carService.delete(id, user.id, user.role);
+  }
 }

@@ -7,6 +7,8 @@ import { InquiryModule } from './inquiry/inquiry.module';
 import { CarModule } from './car/car.module';
 import { LocationModule } from './location/location.module';
 import { BikeModule } from './bike/bike.module';
+import { BookingModule } from './booking/booking.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { BikeModule } from './bike/bike.module';
     CarModule,
     LocationModule,
     BikeModule,
+    BookingModule,
+    ScheduleModule.forRoot(),
   ],
 })
 export class ApiModule {}

@@ -8,16 +8,17 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { Request, Response } from 'express';
-import { isDev } from '../../common/utils';
+import { nanoid } from 'nanoid';
 import { PasswordHelper } from '../../common/helpers';
 import {
   type AuthOptions,
   AuthOptionsSymbol,
   type JwtPayload,
 } from '../../common/interfaces';
+import { isDev } from '../../common/utils';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { LoginDto, RegisterRequest } from './dto';
-import { nanoid } from 'nanoid';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -29,7 +30,7 @@ export class AuthService {
   ) {}
 
   async register(res: Response, dto: RegisterRequest) {
-    const { firstName, lastName, email, password } = dto;
+    const { firstName, lastName, email, password, referralCode } = dto;
     const existUser = await this.prismaService.user.findUnique({
       where: { email },
     });
@@ -37,15 +38,28 @@ export class AuthService {
       throw new ConflictException('User already exists');
     }
 
-    const hashedPassword = await PasswordHelper.hashPassword(password);
+    let inviterId: string | undefined = undefined;
+
+    if (referralCode) {
+      const inviter = await this.prismaService.user.findUnique({
+        where: { referralCode },
+      });
+      if (!inviter) {
+        throw new NotFoundException('Inviter not found');
+      }
+      inviterId = inviter.id;
+    }
+
+    const hashedPassword = PasswordHelper.hashPassword(password);
 
     const user = await this.prismaService.user.create({
       data: {
-		firstName,
-		lastName,
+        firstName,
+        lastName,
         email,
         password: hashedPassword,
-		referralCode: nanoid(10)
+        referralCode: nanoid(10),
+        referredBy: inviterId,
       },
     });
 
@@ -78,31 +92,38 @@ export class AuthService {
   async refresh(req: Request, res: Response) {
     const refreshToken = req.cookies['refreshToken'];
     if (!refreshToken) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('Refresh token not found');
     }
 
-    const payload: JwtPayload = await this.jwtService.verifyAsync(refreshToken);
+    try {
+      const payload: JwtPayload =
+        await this.jwtService.verifyAsync(refreshToken);
 
-    if (payload) {
       const user = await this.prismaService.user.findUnique({
-        where: {
-          id: payload.id,
-        },
-        select: {
-          id: true,
-        },
+        where: { id: payload.id },
       });
 
       if (!user) {
-        throw new UnauthorizedException('User not found');
+        await this.logout(res);
+        throw new UnauthorizedException('User no longer exists');
       }
 
       return this.auth(res, user.id);
+    } catch (e) {
+      await this.logout(res);
+      throw new UnauthorizedException('Session expired');
     }
   }
 
   async logout(res: Response) {
-    this.setCookie(res, 'refreshToken', new Date(Date.now() - 1));
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: !isDev(this.configService),
+      sameSite: !isDev(this.configService) ? 'none' : 'lax',
+      path: '/',
+      // domain: this.options.cookieDomain,
+    });
+    return { message: 'Logged out' };
   }
 
   async validate(id: string) {
@@ -116,7 +137,8 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    const { password, ...result } = user;
+    return result;
   }
 
   private generateTokens(id: string) {
@@ -137,9 +159,10 @@ export class AuthService {
     res.cookie('refreshToken', value, {
       httpOnly: true,
       expires: expiresIn,
-      domain: this.options.cookieDomain,
+      // domain: this.options.cookieDomain,
       secure: !isDev(this.configService),
       sameSite: !isDev(this.configService) ? 'none' : 'lax',
+      path: '/',
     });
   }
 
@@ -149,7 +172,9 @@ export class AuthService {
       this.options.refreshTokenExp as any,
     );
     const expires = new Date(Date.now() + expiresInMs);
+
     this.setCookie(res, refreshToken, expires);
+
     return { accessToken };
   }
 
