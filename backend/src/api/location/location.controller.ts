@@ -4,11 +4,11 @@ import { CreateLocationDto } from './dto/create-location.dto';
 import { Authorization } from 'src/common/decorators';
 import { UserRole } from '@prisma/client';
 
-@Controller('location')
+@Controller('locations')
 export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
-  @Get()
+  @Get('all')
   async findAll() {
     return await this.locationService.findAll();
   }

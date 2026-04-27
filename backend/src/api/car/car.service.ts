@@ -15,6 +15,7 @@ import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import {
   CreateCarDto,
+  SearchCarsDto,
   UpdateCarAvailabilityDto,
   UpdateCarDto,
   UpdateCarStatusDto,
@@ -72,12 +73,11 @@ export class CarService {
   }
 
   async findAvailableCars(
-    locationId?: string,
-    startDate?: Date,
-    endDate?: Date,
+    dto: SearchCarsDto,
     page = 1,
     limit = 20,
   ): Promise<{ items: Car[]; meta: any }> {
+    const { locationId, startDate, endDate } = dto;
     const skip = (page - 1) * limit;
     const bookingsFilter = createBookingsFilter(startDate, endDate);
     const hasDates = startDate && endDate;

@@ -85,7 +85,7 @@ export class CreateCarDto {
   locationId: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MinLength(10, { message: 'Description should be at least 10 characters' })
   @MaxLength(1000, { message: 'Description should not exceed 1000 characters' })
   description?: string;

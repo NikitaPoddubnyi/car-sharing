@@ -30,6 +30,7 @@ import {
   CompleteProfileDto,
   GetReferralCodeDto,
   SetLicenseStatusDto,
+  UpdateUserDto,
 } from './dto';
 import type { Response } from 'express';
 
@@ -106,9 +107,18 @@ export class UserController {
 
   @Patch('profile/complete')
   @Authorization()
-  async updateProfile(
+  async completeProfile(
     @Authorized('id') userId: string,
     @Body() dto: CompleteProfileDto,
+  ) {
+    return await this.userService.completeProfile(userId, dto);
+  }
+
+  @Patch('profile')
+  @Authorization()
+  async updateProfile(
+    @Authorized('id') userId: string,
+    @Body() dto: UpdateUserDto,
   ) {
     return await this.userService.updateProfile(userId, dto);
   }

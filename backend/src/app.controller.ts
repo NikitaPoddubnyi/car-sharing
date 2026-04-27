@@ -6,4 +6,9 @@ import { type User } from '@prisma/client';
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
+
+    @Get()
+   getHealth() {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
 }

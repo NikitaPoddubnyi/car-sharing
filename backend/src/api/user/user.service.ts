@@ -3,9 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { DriverLicense, User, UserAvatar } from '@prisma/client';
+import { DriverLicense, Prisma, User, UserAvatar } from '@prisma/client';
 import type { Response } from 'express';
-import { getPublicId } from 'src/common/helpers';
+import { getPublicId, PasswordHelper } from 'src/common/helpers';
 import { CalculateAge } from 'src/common/helpers/calculate-age.helper';
 import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
@@ -15,54 +15,19 @@ import {
   GetReferralCodeDto,
   SetLicenseStatusDto,
   UpdateLicenseDto,
+  UpdateUserDto,
 } from './dto';
+import { PurgeUserService } from './services/purge-user.service';
 
 @Injectable()
 export class UserService {
-  private async purgeUserData(userId: string): Promise<void> {
-    const user = await this.prismaService.user.findUnique({
-      where: { id: userId },
-      include: {
-        avatar: true,
-        license: true,
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const publicIdsToDelete: string[] = [];
-
-    if (user.avatar?.url) {
-      publicIdsToDelete.push(getPublicId(user.avatar.url));
-    }
-
-    if (user.license) {
-      if (user.license.frontImage)
-        publicIdsToDelete.push(getPublicId(user.license.frontImage));
-      if (user.license.backImage)
-        publicIdsToDelete.push(getPublicId(user.license.backImage));
-    }
-
-    if (publicIdsToDelete.length > 0) {
-      await Promise.all(
-        publicIdsToDelete.map((id) =>
-          this.cloudinary.deleteFile(id).catch(() => {}),
-        ),
-      );
-    }
-
-    await this.prismaService.user.delete({
-      where: { id: userId },
-    });
-  }
-
   constructor(
     private readonly prismaService: PrismaService,
     private readonly cloudinary: CloudinaryService,
     private readonly authService: AuthService,
+    private readonly purgeUserService: PurgeUserService
   ) {}
+
 
   async findById(id: string): Promise<User> {
     const user = await this.prismaService.user.findUnique({
@@ -209,6 +174,69 @@ export class UserService {
     });
   }
 
+  async updateProfile(userId: string, dto: UpdateUserDto) {
+    const { email, phone, password, firstName, lastName, birthDate } = dto;
+
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (email && email !== existingUser.email) {
+      const emailExists = await this.prismaService.user.findUnique({
+        where: { email },
+      });
+      if (emailExists) {
+        throw new BadRequestException('Email already in use');
+      }
+    }
+
+    if (phone && phone !== existingUser.phone) {
+      const phoneExists = await this.prismaService.user.findFirst({
+        where: { phone },
+      });
+      if (phoneExists) {
+        throw new BadRequestException('Phone number already in use');
+      }
+    }
+
+    if (birthDate) {
+      const age = CalculateAge(birthDate);
+      if (age < 18) {
+        throw new BadRequestException('User must be at least 18 years old');
+      }
+    }
+
+    let hashedPassword: string | undefined;
+    if (password) {
+      hashedPassword = PasswordHelper.hashPassword(password);
+    }
+
+    const updateData: Prisma.UserUpdateInput = {
+      ...(firstName && { firstName }),
+      ...(lastName && { lastName }),
+      ...(email && { email }),
+      ...(phone && { phone }),
+      ...(birthDate && { birthDate: new Date(birthDate) }),
+      ...(hashedPassword && { password: hashedPassword }),
+    };
+
+    const updatedUser = await this.prismaService.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: {
+        avatar: true,
+        license: true,
+      },
+    });
+
+    const { password: _, ...result } = updatedUser;
+    return result;
+  }
+
   async changeLicenseStatus(userId: string, dto: SetLicenseStatusDto) {
     const user = await this.prismaService.user.findUnique({
       where: {
@@ -279,7 +307,7 @@ export class UserService {
     });
   }
 
-  async updateProfile(userId: string, dto: CompleteProfileDto) {
+  async completeProfile(userId: string, dto: CompleteProfileDto) {
     const { phone, birthDate } = dto;
 
     const age = CalculateAge(birthDate);
@@ -296,25 +324,28 @@ export class UserService {
       throw new BadRequestException('User must be at least 18 years old');
     }
 
-    return this.prismaService.user.update({
+    const completedUser = await this.prismaService.user.update({
       where: { id: userId },
       data: {
         phone: phone,
         birthDate: new Date(birthDate),
       },
     });
+
+    const { password, ...result } = completedUser;
+    return result;
   }
 
   async deleteProfile(res: Response, userId: string): Promise<boolean> {
     await this.authService.logout(res);
 
-    await this.purgeUserData(userId);
+    await this.purgeUserService.purgeUserData(userId);
 
     return true;
   }
 
   async deleteUser(userId: string): Promise<boolean> {
-    await this.purgeUserData(userId);
+    await this.purgeUserService.purgeUserData(userId);
     return true;
   }
 }

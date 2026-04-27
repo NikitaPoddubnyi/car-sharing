@@ -18,7 +18,6 @@ import {
 import { isDev } from '../../common/utils';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { LoginDto, RegisterRequest } from './dto';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuthService {

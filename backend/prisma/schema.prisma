@@ -81,12 +81,12 @@ model Car {
   year          Int     
   
   bodyType      BodyType @default(SEDAN)
-  seats         Int      // 2
-  doors         Int      // 2
-  luggage       Int      // Объем багажника (150)
+  seats         Int     
+  doors         Int     
+  luggage       Int      
   transmission  Transmission  @default(AUTOMATIC) 
   driveTrain    DriveTrain    @default(FWD)
-  mileage       Int      // Пробег
+  mileage       Int      
   fuelType      FuelType      @default(PETROL)
   engineSize    Int      
 
@@ -150,7 +150,7 @@ model Bike {
   engineDisplacement  Int
   emmisionType   String
   fuelType       FuelType      @default(PETROL)
-  mileage       Int      // Пробег
+  mileage       Int      
   abs           String
   gearBox        GearBox @default(SPEED_5)
   tyreType       TyreType @default(FLAT)
@@ -194,7 +194,6 @@ model Booking {
   id        String      @id @default(cuid())
   bookingNo       String        @unique 
   
-  // Связи
   user            User          @relation("booking_user",fields: [userId], references: [id])
   userId          String           @map("user_id")
   
@@ -204,7 +203,6 @@ model Booking {
   bike            Bike?          @relation("booking_bike", fields: [bikeId], references: [id])
   bikeId          String?           @map("bike_id")
 
-  // География
   pickUpLocationId String @map("pick_up_location_id")
   pickUpLocation   Location @relation("PickUpLocation", fields: [pickUpLocationId], references: [id], onDelete: Restrict) 
   
@@ -214,7 +212,6 @@ model Booking {
   startDate       DateTime      @map("start_date") 
   endDate         DateTime      @map("end_date")   
 
-  // Финансы
   totalPrice      Decimal       @db.Decimal(10, 2) @map("total_price") 
 
   status          BookingStatus @default(BOOKING)
@@ -247,6 +244,7 @@ enum FuelType {
   PETROL
   DIESEL
   HYBRID
+  ELECTRIC
 }
 
 enum BodyType {
