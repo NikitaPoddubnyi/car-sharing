@@ -23,15 +23,16 @@ export default function CustomerSayingSection() {
 
                 <div className="flex items-center gap-2 text-sm">
                   <span
-                    className="relative pl-12 font-medium
-				  before:content-['']
-				  before:absolute
-				  before:left-0
-				  before:top-1/2
-				  before:-translate-y-1/2
-				  before:w-8
-				  before:h-0.5
-				  before:bg-white"
+                    className="
+                    relative pl-12 font-medium
+				            before:content-['']
+				            before:absolute
+				            before:left-0
+				            before:top-1/2
+				            before:-translate-y-1/2
+				            before:w-8
+				            before:h-0.5
+				          before:bg-white"
                   >
                     {item.name}
                   </span>

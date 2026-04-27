@@ -1,3 +1,4 @@
+import { Footer } from '@/widgets/ui/footer';
 import { NavBlack } from '@/widgets/ui/nav/nav-black';
 
 export default function HomeLayout({

@@ -3,7 +3,7 @@ export type IVehicleTypes = {
   src: string;
 };
 
-export const VehicleTypes: IVehicleTypes[] = [
+export const vehicleTypes: IVehicleTypes[] = [
   {
     name: 'Bike',
     src: '/bikes',

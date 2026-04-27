@@ -15,6 +15,10 @@ import odessaImg from './odessa.jpg';
 import zaporizhiaImg from './Zaporizhia.jpg';
 import vinitsaImg from './vinitsa.jpg';
 import mapImg from './map.png';
+import Facebook from './bxl_facebook.png'
+import Twitter from './akar-icons_twitter-fill.png';
+import Instagram from './akar-icons_instagram-fill.png';
+import Linkedin from './linkedin.png';
 
 export {
   BikeHeaderImg,
@@ -34,4 +38,8 @@ export {
   zaporizhiaImg,
   vinitsaImg,
   mapImg,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin
 };
