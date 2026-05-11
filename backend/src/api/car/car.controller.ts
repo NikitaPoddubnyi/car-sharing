@@ -35,17 +35,11 @@ export class CarController {
   constructor(private readonly carService: CarService) {}
 
   @Public()
-  @Get('all')
-  async findAll(
+  @Get('available')
+  async findAvailable(
     @Query() dto: SearchCarsDto,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
-    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number = 20,
   ) {
-    return await this.carService.findAvailableCars(
-      dto,
-      page,
-      limit,
-    );
+    return await this.carService.findAvailableCars(dto);
   }
 
   @Get(':id/availability')

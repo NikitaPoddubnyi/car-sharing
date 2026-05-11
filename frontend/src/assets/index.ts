@@ -15,10 +15,14 @@ import odessaImg from './odessa.jpg';
 import zaporizhiaImg from './Zaporizhia.jpg';
 import vinitsaImg from './vinitsa.jpg';
 import mapImg from './map.png';
-import Facebook from './bxl_facebook.png'
+import Facebook from './bxl_facebook.png';
 import Twitter from './akar-icons_twitter-fill.png';
 import Instagram from './akar-icons_instagram-fill.png';
 import Linkedin from './linkedin.png';
+import VideoPreviewImg from './logBack.png';
+import CarsHeaderImg from './cars-header.png';
+import BikesHeaderImg from './BikesHeaderImg.png';
+import MapCarsHeaderImg from './MapCarHeader.png';
 
 export {
   BikeHeaderImg,
@@ -41,5 +45,9 @@ export {
   Facebook,
   Twitter,
   Instagram,
-  Linkedin
+  Linkedin,
+  VideoPreviewImg,
+  CarsHeaderImg,
+  BikesHeaderImg,
+  MapCarsHeaderImg,
 };

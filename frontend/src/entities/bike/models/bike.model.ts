@@ -8,11 +8,19 @@ export type CreateBikeModel = Omit<
 
 export type UpdateBikeModel = Partial<CreateBikeModel>;
 
+interface Images {
+  id: string;
+  url: string;
+  isPrimary: boolean;
+}
+
 export interface Bike {
   id: string;
   brand: string;
   model: string;
   year: number;
+
+  images: Images[];
 
   groundClearance: number;
   engineDisplacement: number;
@@ -37,4 +45,30 @@ export interface Bike {
   isAvailable?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SearchBikesDto {
+  locationId?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  fuelType?: FuelType;
+  brand?: string;
+  model?: string;
+  tyreType?: TyreType;
+  gearBox?: GearBox;
+  minPrice?: number;
+  maxPrice?: number;
+  priceSort?: 'asc' | 'desc';
+  timeDuration?: 'hour' | 'day';
+}
+
+export interface BikesResponse {
+  items: Bike[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

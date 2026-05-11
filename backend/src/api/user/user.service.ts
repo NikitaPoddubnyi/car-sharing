@@ -25,9 +25,8 @@ export class UserService {
     private readonly prismaService: PrismaService,
     private readonly cloudinary: CloudinaryService,
     private readonly authService: AuthService,
-    private readonly purgeUserService: PurgeUserService
+    private readonly purgeUserService: PurgeUserService,
   ) {}
-
 
   async findById(id: string): Promise<User> {
     const user = await this.prismaService.user.findUnique({

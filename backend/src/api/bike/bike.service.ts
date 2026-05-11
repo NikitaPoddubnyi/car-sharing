@@ -15,6 +15,7 @@ import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
 import { PrismaService } from 'src/infra/prisma/prisma.service';
 import {
   CreateBikeDto,
+  SearchBikesDto,
   UpdateBikeAvailabilityDto,
   UpdateBikeDto,
   UpdateBikeStatusDto,
@@ -23,6 +24,7 @@ import { BikeWithDetails, ConflictingBooking } from './types';
 import { deleteImagesFromCloudinary, prepareImagesData } from './utils';
 import { BIKE_MESSAGES, CLOUDINARY_FOLDERS } from './constants';
 import { createBookingsFilter, overlapWhere } from 'src/common/helpers';
+import { contains } from 'class-validator';
 
 @Injectable()
 export class BikeService {
@@ -70,15 +72,30 @@ export class BikeService {
   }
 
   async findAvailableBikes(
-    locationId?: string,
-    startDate?: Date,
-    endDate?: Date,
-    page = 1,
-    limit = 20,
+    dto: SearchBikesDto,
   ): Promise<{ items: Bike[]; meta: any }> {
+    const {
+      startDate,
+      endDate,
+      locationId,
+      search,
+      fuelType,
+      gearBox,
+      tyreType,
+      brand,
+      minPrice,
+      maxPrice,
+      priceSort,
+      timeDuration,
+      page = 1,
+      limit = 20,
+    } = dto;
+
     const skip = (page - 1) * limit;
-    const bookingsFilter = createBookingsFilter(startDate, endDate);
-    const hasDates = startDate && endDate;
+    const startDateObj = startDate ? new Date(startDate) : undefined;
+    const endDateObj = endDate ? new Date(endDate) : undefined;
+    const bookingsFilter = createBookingsFilter(startDateObj, endDateObj);
+    const hasDates = startDateObj && endDateObj;
 
     const where: any = {
       status: VehicleStatus.APPROVED,
@@ -93,11 +110,34 @@ export class BikeService {
       where.bookings = bookingsFilter;
     }
 
+    if (fuelType) where.fuelType = fuelType;
+    if (gearBox) where.gearBox = gearBox;
+    if (tyreType) where.tyreType = tyreType;
+    if (brand) where.brand = { contains: brand, mode: 'insensitive' };
+
+    const priceField = timeDuration === 'hour' ? 'pricePerHour' : 'pricePerDay';
+    if (minPrice || maxPrice) {
+      where[priceField] = {};
+      if (minPrice) where[priceField].gte = minPrice;
+      if (maxPrice) where[priceField].lte = maxPrice;
+    }
+
+    if (search) {
+      where.OR = [
+        { brand: { contains: search, mode: 'insensitive' } },
+        { model: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderBy: any = priceSort
+      ? { [priceField]: priceSort }
+      : { createdAt: 'desc' };
+
     const [items, total] = await Promise.all([
       this.prismaService.bike.findMany({
         where,
+        orderBy,
         include: { images: true, location: true },
-        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
@@ -115,6 +155,18 @@ export class BikeService {
           bikeId: { in: bikeIds },
           status: BookingStatus.BOOKING,
           endDate: { gt: new Date() },
+        },
+      });
+
+      bookedStatusMap = new Map(dateBookings.map((b) => [b.bikeId, true]));
+    } else {
+      const dateBookings = await this.prismaService.booking.groupBy({
+        by: ['bikeId'],
+        where: {
+          bikeId: { in: bikeIds },
+          status: BookingStatus.BOOKING,
+          startDate: { lt: endDateObj },
+          endDate: { gt: startDateObj },
         },
       });
 

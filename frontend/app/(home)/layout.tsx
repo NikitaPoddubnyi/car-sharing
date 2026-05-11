@@ -8,6 +8,7 @@ export default function HomeLayout({
 }>) {
   return (
     <>
+    <title>Drivee - Car Rental</title>
       <NavBlack />
       <main>{children}</main>
     </>

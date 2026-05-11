@@ -1,5 +1,5 @@
 import { $axios } from '@/shared/api/client';
-import { CreateBikeModel, Bike, UpdateBikeModel } from '../models';
+import { CreateBikeModel, Bike, UpdateBikeModel, SearchBikesDto, BikesResponse } from '../models';
 import { handleAxiosError } from '@/shared/lib/helpers';
 
 export class BikeApi {
@@ -12,22 +12,27 @@ export class BikeApi {
     }
   }
 
-  static async getAll(): Promise<Bike[]> {
-    try {
-      const { data } = await $axios.get<Bike[]>('/bikes/all');
-      return data;
-    } catch (error) {
-      handleAxiosError(error);
-      return [];
-    }
-  }
-
   static async getOne(id: string): Promise<Bike | undefined> {
     try {
       const { data } = await $axios.get<Bike>(`/bikes/${id}`);
       return data;
     } catch (error) {
       handleAxiosError(error);
+    }
+  }
+
+  static async findAvailable(
+    dto: SearchBikesDto = {},
+    page = 1,
+    limit = 20
+  ): Promise<BikesResponse> {
+    try {
+      const { data } = await $axios.get<BikesResponse>('/bikes/available', {
+        params: { ...dto, page, limit },
+      });
+      return data;
+    } catch (error) {
+      return { items: [], meta: { total: 0, page, limit, totalPages: 0 } };
     }
   }
 

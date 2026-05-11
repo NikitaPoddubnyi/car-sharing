@@ -74,32 +74,69 @@ export class CarService {
 
   async findAvailableCars(
     dto: SearchCarsDto,
-    page = 1,
-    limit = 20,
   ): Promise<{ items: Car[]; meta: any }> {
-    const { locationId, startDate, endDate } = dto;
+    const {
+      locationId,
+      startDate,
+      endDate,
+      search,
+      bodyType,
+      transmission,
+      driveTrain,
+      fuelType,
+      brand,
+      seats,
+      minPrice,
+      maxPrice,
+      priceSort,
+      timeDuration,
+      page = 1,
+      limit = 2,
+    } = dto;
+
     const skip = (page - 1) * limit;
-    const bookingsFilter = createBookingsFilter(startDate, endDate);
-    const hasDates = startDate && endDate;
+    const startDateObj = startDate ? new Date(startDate) : undefined;
+    const endDateObj = endDate ? new Date(endDate) : undefined;
+    const bookingsFilter = createBookingsFilter(startDateObj, endDateObj);
+    const hasDates = startDateObj && endDateObj;
 
     const where: any = {
       status: VehicleStatus.APPROVED,
       isAvailable: true,
     };
 
-    if (locationId) {
-      where.locationId = locationId;
+    if (locationId) where.locationId = locationId;
+    if (bookingsFilter) where.bookings = bookingsFilter;
+    if (bodyType) where.bodyType = bodyType;
+    if (transmission) where.transmission = transmission;
+    if (driveTrain) where.driveTrain = driveTrain;
+    if (fuelType) where.fuelType = fuelType;
+    if (brand) where.brand = { contains: brand, mode: 'insensitive' };
+    if (seats) where.seats = Number(seats);
+
+    const priceField = timeDuration === 'hour' ? 'pricePerHour' : 'pricePerDay';
+    if (minPrice || maxPrice) {
+      where[priceField] = {};
+      if (minPrice) where[priceField].gte = minPrice;
+      if (maxPrice) where[priceField].lte = maxPrice;
     }
 
-    if (bookingsFilter) {
-      where.bookings = bookingsFilter;
+    if (search) {
+      where.OR = [
+        { brand: { contains: search, mode: 'insensitive' } },
+        { model: { contains: search, mode: 'insensitive' } },
+      ];
     }
+
+    const orderBy: any = priceSort
+      ? { [priceField]: priceSort }
+      : { createdAt: 'desc' };
 
     const [items, total] = await Promise.all([
       this.prismaService.car.findMany({
         where,
         include: { images: true, location: true },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take: limit,
       }),
@@ -107,7 +144,6 @@ export class CarService {
     ]);
 
     const carIds = items.map((car) => car.id);
-
     let bookedStatusMap: Map<string | null, boolean> = new Map();
 
     if (!hasDates) {
@@ -119,7 +155,6 @@ export class CarService {
           endDate: { gt: new Date() },
         },
       });
-
       bookedStatusMap = new Map(activeBookings.map((b) => [b.carId, true]));
     } else {
       const dateBookings = await this.prismaService.booking.groupBy({
@@ -127,21 +162,18 @@ export class CarService {
         where: {
           carId: { in: carIds },
           status: BookingStatus.BOOKING,
-          startDate: { lt: endDate },
-          endDate: { gt: startDate },
+          startDate: { lt: endDateObj },
+          endDate: { gt: startDateObj },
         },
       });
-
       bookedStatusMap = new Map(dateBookings.map((b) => [b.carId, true]));
     }
 
-    const itemsWithStatus = items.map((car) => ({
-      ...car,
-      isBooked: bookedStatusMap.get(car.id) || false,
-    }));
-
     return {
-      items: itemsWithStatus,
+      items: items.map((car) => ({
+        ...car,
+        isBooked: bookedStatusMap.get(car.id) || false,
+      })),
       meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }

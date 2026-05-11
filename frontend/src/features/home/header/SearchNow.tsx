@@ -2,6 +2,7 @@
 
 import { LocationApi } from '@/entities/location/api';
 import { Location } from '@/entities/location/models';
+import { useLocationStore } from '@/entities/location/store';
 import { ChevronDown, MapPin, Search } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
@@ -18,8 +19,8 @@ export function SearchNow() {
   const { register, handleSubmit, setValue, watch } = useForm<FormValues>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { locations, fetchLocations } = useLocationStore();
 
-  const [locations, setLocations] = useState<Location[] | null>(null);
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [searchLocation, setSearchLocation] = useState('');
 
@@ -31,13 +32,8 @@ export function SearchNow() {
   }
 
   useEffect(() => {
-    const fetchLocations = async () => {
-      const allLocations = await LocationApi.getAll();
-      setLocations(allLocations);
-    };
-
     fetchLocations();
-  }, []);
+  }, [fetchLocations]);
 
   useEffect(() => {
     const locationId = searchParams.get('locationId') || undefined;

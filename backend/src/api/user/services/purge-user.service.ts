@@ -1,16 +1,16 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { getPublicId } from "src/common/helpers";
-import { CloudinaryService } from "src/infra/claudinary/claudinary.service";
-import { PrismaService } from "src/infra/prisma/prisma.service";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { getPublicId } from 'src/common/helpers';
+import { CloudinaryService } from 'src/infra/claudinary/claudinary.service';
+import { PrismaService } from 'src/infra/prisma/prisma.service';
 
 @Injectable()
 export class PurgeUserService {
-	constructor(
-		private readonly prismaService: PrismaService,
-		private readonly cloudinary: CloudinaryService
-	) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly cloudinary: CloudinaryService,
+  ) {}
 
-	 async purgeUserData(userId: string): Promise<void> {
+  async purgeUserData(userId: string): Promise<void> {
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
       include: {

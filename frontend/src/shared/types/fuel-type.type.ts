@@ -11,3 +11,5 @@ export const FUEL_TYPE_LABELS: Record<FuelType, string> = {
   [FuelType.HYBRID]: 'Hybrid',
   [FuelType.ELECTRIC]: 'Electric',
 };
+
+export const fuelTypeOptions = Object.entries(FUEL_TYPE_LABELS);

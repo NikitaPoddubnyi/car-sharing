@@ -24,6 +24,7 @@ import {
 } from '@nestjs/platform-express';
 import {
   CreateBikeDto,
+  SearchBikesDto,
   UpdateBikeAvailabilityDto,
   UpdateBikeDto,
   UpdateBikeStatusDto,
@@ -34,21 +35,12 @@ export class BikeController {
   constructor(private readonly bikeService: BikeService) {}
 
   @Public()
-  @Get('all')
-  async findAll(
-    @Query('locationId') locationId?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
-    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number = 20,
+  @Get('available')
+  async findAvailable(
+    @Query() dto: SearchBikesDto,
+
   ) {
-    return await this.bikeService.findAvailableBikes(
-      locationId,
-      startDate ? new Date(startDate) : undefined,
-      endDate ? new Date(endDate) : undefined,
-      page,
-      limit,
-    );
+    return await this.bikeService.findAvailableBikes(dto);
   }
 
   @Get(':id/availability')

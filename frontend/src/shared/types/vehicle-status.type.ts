@@ -9,3 +9,5 @@ export const VEHICLE_STATUS_LABELS: Record<VehicleStatus, string> = {
   [VehicleStatus.APPROVED]: 'Approved',
   [VehicleStatus.REJECTED]: 'Rejected',
 };
+
+export const vehicleStatusOptions = Object.entries(VEHICLE_STATUS_LABELS);

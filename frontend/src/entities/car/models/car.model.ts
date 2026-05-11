@@ -14,6 +14,8 @@ export interface Car {
   model: string;
   year: number;
 
+  images: Images[];
+
   bodyType: BodyType;
   seats: number;
   doors: number;
@@ -37,4 +39,37 @@ export interface Car {
 
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SearchCarsDto {
+  locationId?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+  bodyType?: BodyType;
+  transmission?: Transmission;
+  driveTrain?: DriveTrain;
+  fuelType?: FuelType;
+  brand?: string;
+  seats?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  priceSort?: 'asc' | 'desc';
+  timeDuration?: 'hour' | 'day';
+}
+
+export interface Images {
+  id: string;
+  url: string;
+  isPrimary: boolean;
+}
+
+export interface CarsResponse {
+  items: Car[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }

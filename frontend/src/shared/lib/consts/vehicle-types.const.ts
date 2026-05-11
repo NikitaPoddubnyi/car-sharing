@@ -13,3 +13,8 @@ export const vehicleTypes: IVehicleTypes[] = [
     src: '/cars',
   },
 ];
+
+export enum VehicleTypes {
+  BIKE = 'BIKE',
+  CAR = 'CAR',
+}

@@ -1,10 +1,10 @@
-import { Facebook, Instagram, Linkedin, Twitter } from "@/assets";
-import { StaticImageData } from "next/image";
+import { Facebook, Instagram, Linkedin, Twitter } from '@/assets';
+import { StaticImageData } from 'next/image';
 
 export type ISocialLink = {
-	icon: StaticImageData;
-	href: string;
-	label: string;
+  icon: StaticImageData;
+  href: string;
+  label: string;
 };
 
 export const socialLinks: ISocialLink[] = [
